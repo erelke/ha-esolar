@@ -1,0 +1,42 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Felhasználónév",
+          "password": "Jeszó"
+        },
+        "description": "Kérlek add meg a SAJ eSolar felhasználóneved és jelszavad!",
+        "title":"SAJ eSolar"
+      },
+      "sites":{
+        "data":{
+          "monitored_sites": "Rendszereket"
+        },
+        "description": "Válaszd ki a megjelenítendő rendszereket",
+        "title":"SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Nem sikerült kapcsolódni",
+      "invalid_auth": "Nem megfelelő azonosítók",
+      "unknown": "Ismeretlen hiba",
+      "no_sites": "Nincs kiválasztott rendszer"
+    },
+    "abort": {
+      "already_configured": "Már beállítva"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Mutasd az inverter szenzorait",
+          "show_pv_grid_data": "Mutasd a napelem és a hálózat adatait"
+        },
+        "description": "Válasz az alábbiakból",
+        "title": "SAJ eSolar"
+        }
+    }
+  }
+}

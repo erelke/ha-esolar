@@ -48,7 +48,7 @@ P_TYPE_GRID = "Grid"
 P_TYPE_STORAGE = "Storage"
 P_TYPE_BLEND = "Blend"
 P_TYPE_AC_COUPLING = "AC Coupling"
-P_TYPE_ONGRID = "On-rid"
+P_TYPE_ONGRID = "On-grid"
 
 I_PV_VOL_PV = "Photovoltaics Voltage PV1, PV2, PV3"
 I_PV_CURR_PV = "Photovoltaics Current PV1, PV2, PV3"
