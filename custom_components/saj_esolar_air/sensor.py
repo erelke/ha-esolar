@@ -1,8 +1,10 @@
 """Support for ESolar sensors."""
 from __future__ import annotations
 
+import time
 import datetime
-from datetime import timedelta
+from datetime import timedelta, datetime, timezone
+import pytz
 import logging
 
 from homeassistant.components.sensor import (
@@ -16,7 +18,8 @@ from homeassistant.const import (
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricPotential,
-    UnitOfElectricCurrent
+    UnitOfElectricCurrent,
+    UnitOfTemperature
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -120,6 +123,8 @@ ICON_METER = "mdi:meter-electric-outline"
 ICON_GRID = "mdi:transmission-tower"
 ICON_GRID_EXPORT = "mdi:transmission-tower-export"
 ICON_GRID_IMPORT = "mdi:transmission-tower-import"
+ICON_THERMOMETER = "mdi:thermometer"
+ICON_UPDATE = "mdi:update"
 
 SCAN_INTERVAL = timedelta(minutes=1)
 MIN_TIME_BETWEEN_UPDATES = timedelta(minutes=5)
@@ -159,14 +164,22 @@ async def async_setup_entry(
                     plant["plantname"],
                 )
                 entities.append(
-                    ESolarSensorPlantTotalEnergy(
-                        coordinator, plant["plantname"], plant["plantuid"]
-                    )
+                    ESolarSensorPlantTotalEnergy( coordinator, plant["plantname"], plant["plantuid"] )
                 )
                 entities.append(
-                    ESolarSensorPlantPeakPower(
-                        coordinator, plant["plantname"], plant["plantuid"]
-                    )
+                    ESolarSensorPlantTodayEnergy( coordinator, plant["plantname"], plant["plantuid"] )
+                )
+                entities.append(
+                    ESolarSensorPlantMonthEnergy( coordinator, plant["plantname"], plant["plantuid"] )
+                )
+                entities.append(
+                    ESolarSensorPlantYearEnergy( coordinator, plant["plantname"], plant["plantuid"] )
+                )
+                entities.append(
+                    ESolarSensorPlantPeakPower( coordinator, plant["plantname"], plant["plantuid"] )
+                )
+                entities.append(
+                    ESolarSensorPlantLastUploadTime( coordinator, plant["plantname"], plant["plantuid"] )
                 )
             elif plant["type"] == 3:
                 _LOGGER.debug(
@@ -223,12 +236,7 @@ async def async_setup_entry(
                         inverter,
                     )
                     entities.append(
-                        ESolarInverterEnergyTotal(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterEnergyTotal( coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     _LOGGER.debug(
                         "Setting up ESolarInverterPower sensor for %s and inverter %s",
@@ -236,130 +244,57 @@ async def async_setup_entry(
                         inverter,
                     )
                     entities.append(
-                        ESolarInverterPower(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                            use_pv_grid_attributes,
-                        )
+                        ESolarInverterPower( coordinator, plant["plantname"], plant["plantuid"], inverter, use_pv_grid_attributes, )
                     )
                     _LOGGER.debug(
-                        "Setting up ESolarInverter PV sensors for %s and inverter %s",
+                        "Setting up ESolarInverter other sensors for %s and inverter %s",
                         plant["plantname"],
                         inverter,
                     )
                     entities.append(
-                        ESolarInverterPV1(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPV1( coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterPV2(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPV2(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterPV3(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPV3(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterPC1(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPC1(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterPC2(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPC2(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterPC3(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterPC3(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGV1(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGV1(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGV2(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGV2(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGV3(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGV3(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGC1(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGC1(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGC2(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGC2(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterGC3(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterGC3(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterEnergyToday(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterEnergyToday(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     entities.append(
-                        ESolarInverterEnergyMonth(
-                            coordinator,
-                            plant["plantname"],
-                            plant["plantuid"],
-                            inverter,
-                        )
+                        ESolarInverterEnergyMonth(coordinator, plant["plantname"], plant["plantuid"], inverter, )
+                    )
+                    entities.append(
+                        ESolarInverterTemperature(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                     )
                     if plant["type"] == 3:
                         _LOGGER.debug(
@@ -368,12 +303,7 @@ async def async_setup_entry(
                             inverter,
                         )
                         entities.append(
-                            ESolarInverterBatterySoC(
-                                coordinator,
-                                plant["plantname"],
-                                plant["plantuid"],
-                                inverter,
-                            )
+                            ESolarInverterBatterySoC(coordinator, plant["plantname"], plant["plantuid"], inverter, )
                         )
 
     async_add_entities(entities, True)
@@ -566,6 +496,183 @@ class ESolarSensorPlantTotalEnergy(ESolarSensor):
 
                 # Setup state
                 value = float(plant["totalElectricity"])
+
+        return value
+
+class ESolarSensorPlantTodayEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_{plant_uid}_today"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_METER
+        self._attr_name = f"Plant {self._plant_name} Energy Today "
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+
+                # Setup static attributes
+                self._attr_available = True
+                # Setup state
+                self._attr_native_value = float(plant["todayElectricity"])
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                # Setup state
+                value = float(plant["todayElectricity"])
+
+        return value
+
+class ESolarSensorPlantMonthEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_{plant_uid}_month"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_METER
+        self._attr_name = f"Plant {self._plant_name} Energy Month"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+                # Setup static attributes
+                self._attr_available = True
+                # Setup state
+                self._attr_native_value = float(plant["plantDetail"]["monthElectricity"])
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+                # Setup state
+                value = float(plant["plantDetail"]["monthElectricity"])
+
+        return value
+
+class ESolarSensorPlantYearEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_{plant_uid}_year"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_METER
+        self._attr_name = f"Plant {self._plant_name} Energy Year"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+
+                # Setup static attributes
+                self._attr_available = True
+                # Setup state
+                self._attr_native_value = float(plant["plantDetail"]["yearElectricity"])
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+                # Setup state
+                value = float(plant["plantDetail"]["yearElectricity"])
+
+        return value
+
+class ESolarSensorPlantLastUploadTime(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_lastUploadTime_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_UPDATE
+        self._attr_name = f"Plant {self._plant_name} last Upload Time"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+
+                # Setup static attributes
+                self._attr_available = True
+                # Setup state
+                self._attr_native_value = datetime.strptime(plant["plantDetail"]["lastUploadTime"]+" "+time.strftime('%z'), "%Y-%m-%d %H:%M:%S %z")
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                if plant["plantDetail"] is None:
+                    continue
+                # Setup state
+                value = datetime.strptime(plant["plantDetail"]["lastUploadTime"]+" "+time.strftime('%z'), "%Y-%m-%d %H:%M:%S %z")
 
         return value
 
@@ -1175,7 +1282,6 @@ class ESolarInverterEnergyMonth(ESolarSensor):
                     value = float(kit["monthSellEnergy"])
 
         return value
-
 
 class ESolarInverterPower(ESolarSensor):
     """Representation of a eSolar sensor for the plant."""
@@ -2248,5 +2354,64 @@ class ESolarInverterBatterySoC(ESolarSensor):
                     self._attr_extra_state_attributes[S_POWER] = kit[
                         "storeDevicePower"
                     ]["solarPower"]
+
+        return value
+
+class ESolarInverterTemperature(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(
+        self,
+        coordinator: ESolarCoordinator,
+        plant_name,
+        plant_uid,
+        inverter_sn
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+        self._attr_unique_id = f"Temp_{inverter_sn}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+        self.inverter_sn = inverter_sn
+
+        self._attr_icon = ICON_THERMOMETER
+        self._attr_name = f"Inverter {inverter_sn} Temperature"
+        self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+        self._attr_device_class = SensorDeviceClass.TEMPERATURE
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] == self._plant_name:
+                # Setup static attributes
+                self._attr_available = True
+                if "kitList" in plant and plant["kitList"] is not None:
+                    for kit in plant["kitList"]:
+                        if kit["devicesn"] == self.inverter_sn:
+                            # Setup state
+                            self._attr_native_value = float(kit["findRawdataPageList"]["deviceTemp"])
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantname"] != self._plant_name:
+                continue
+            # Setup dynamic attributes
+            if "kitList" not in plant or plant["kitList"] is None:
+                continue
+            for kit in plant["kitList"]:
+                if kit["devicesn"] != self.inverter_sn:
+                    continue
+                if kit["onLineStr"] == "1":
+                    # Setup state
+                    value = float(kit["findRawdataPageList"]["deviceTemp"])
 
         return value
