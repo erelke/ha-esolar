@@ -381,6 +381,7 @@ class ESolarSensorPlant(ESolarSensor):
             if plant["plantname"] == self._plant_name:
                 # Setup static attributes
                 self._attr_available = True
+                # self._attr_extra_state_attributes['Original data'] = plant
                 self._attr_extra_state_attributes[P_NAME] = plant["plantname"]
                 self._attr_extra_state_attributes[P_UID] = plant["plantuid"]
                 self._attr_extra_state_attributes[P_ADR] = (
@@ -413,6 +414,7 @@ class ESolarSensorPlant(ESolarSensor):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantname"] == self._plant_name:
                 # Setup dynamic attributes
+                # self._attr_extra_state_attributes['Original data'] = plant
                 if (plant["plantDetail"]["type"]) == 0:
                     self._attr_extra_state_attributes[P_INCOME] = plant["plantDetail"][
                         "income"
@@ -1890,7 +1892,8 @@ class ESolarInverterPW1(ESolarSensor):
                     for kit in plant["kitList"]:
                         if kit["devicesn"] == self.inverter_sn:
                             # Setup state
-                            self._attr_native_value = float(kit["findRawdataPageList"]["pV1Power"])
+                            self._attr_native_value = float(kit["findRawdataPageList"]["pV1Curr"]) * float(kit["findRawdataPageList"]["pV1Volt"])
+                                                      # float(kit["findRawdataPageList"]["pV1Power"])
 
     @property
     def native_value(self) -> float | None:
@@ -1907,7 +1910,8 @@ class ESolarInverterPW1(ESolarSensor):
                     continue
                 if kit["onLineStr"] == "1":
                     # Setup state
-                    value = float(kit["findRawdataPageList"]["pV1Power"])
+                    value = float(kit["findRawdataPageList"]["pV1Curr"]) * float(kit["findRawdataPageList"]["pV1Volt"])
+                            # float(kit["findRawdataPageList"]["pV1Power"])
 
         return value
 
@@ -1949,7 +1953,8 @@ class ESolarInverterPW2(ESolarSensor):
                     for kit in plant["kitList"]:
                         if kit["devicesn"] == self.inverter_sn:
                             # Setup state
-                            self._attr_native_value = float(kit["findRawdataPageList"]["pV2Power"])
+                            self._attr_native_value = float(kit["findRawdataPageList"]["pV2Curr"]) * float(kit["findRawdataPageList"]["pV2Volt"])
+                            # float(kit["findRawdataPageList"]["pV2Power"])
 
     @property
     def native_value(self) -> float | None:
@@ -1966,7 +1971,8 @@ class ESolarInverterPW2(ESolarSensor):
                     continue
                 if kit["onLineStr"] == "1":
                     # Setup state
-                    value = float(kit["findRawdataPageList"]["pV2Power"])
+                    value = float(kit["findRawdataPageList"]["pV2Curr"]) * float(kit["findRawdataPageList"]["pV2Volt"])
+                            # float(kit["findRawdataPageList"]["pV2Power"])
 
         return value
 
@@ -2008,7 +2014,8 @@ class ESolarInverterPW3(ESolarSensor):
                     for kit in plant["kitList"]:
                         if kit["devicesn"] == self.inverter_sn:
                             # Setup state
-                            self._attr_native_value = float(kit["findRawdataPageList"]["pV3Power"])
+                            self._attr_native_value = float(kit["findRawdataPageList"]["pV3Curr"]) * float(kit["findRawdataPageList"]["pV3Volt"])
+                            # float(kit["findRawdataPageList"]["pV3Power"])
 
     @property
     def native_value(self) -> float | None:
