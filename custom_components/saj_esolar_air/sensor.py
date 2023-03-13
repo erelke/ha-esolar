@@ -2240,7 +2240,7 @@ class ESolarInverterGC1(ESolarSensor):
         self.inverter_sn = inverter_sn
 
         self._attr_icon = ICON_GRID_EXPORT
-        self._attr_name = f"Inverter {inverter_sn} GC1s"
+        self._attr_name = f"Inverter {inverter_sn} GC1r"
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
