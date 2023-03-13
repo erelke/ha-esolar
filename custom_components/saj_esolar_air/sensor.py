@@ -15,7 +15,6 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
-    CONF_COUNT,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricPotential,
@@ -765,7 +764,7 @@ class ESolarSensorPlantTodayAlarmNum(ESolarSensor):
 
         self._attr_icon = ICON_ALARM
         self._attr_name = f"Plant {self._plant_name} Today Alarm Num"
-        self._attr_native_unit_of_measurement = CONF_COUNT
+        self._attr_native_unit_of_measurement = None
         self._attr_device_class = None
         self._attr_state_class = None
 
