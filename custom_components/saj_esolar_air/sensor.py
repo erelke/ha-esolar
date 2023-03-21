@@ -709,7 +709,7 @@ class ESolarSensorPlantPeakPower(ESolarSensor):
 
         self._attr_icon = ICON_POWER
         self._attr_name = f"Plant {self._plant_name} Peak Power"
-        self._attr_native_unit_of_measurement = UnitOfPower.KILO_WATT
+        self._attr_native_unit_of_measurement = UnitOfPower.WATT
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
