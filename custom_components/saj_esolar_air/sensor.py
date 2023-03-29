@@ -19,7 +19,8 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfElectricPotential,
     UnitOfElectricCurrent,
-    UnitOfTemperature
+    UnitOfTemperature,
+    EntityCategory
 )
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity import DeviceInfo
@@ -1573,6 +1574,7 @@ class ESolarInverterPV1(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1633,6 +1635,7 @@ class ESolarInverterPV2(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1693,6 +1696,7 @@ class ESolarInverterPV3(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1753,6 +1757,7 @@ class ESolarInverterPC1(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1813,6 +1818,7 @@ class ESolarInverterPC2(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1873,6 +1879,7 @@ class ESolarInverterPC3(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1932,6 +1939,7 @@ class ESolarInverterPW1(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfPower.WATT
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -1997,6 +2005,7 @@ class ESolarInverterPW2(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfPower.WATT
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2062,6 +2071,7 @@ class ESolarInverterPW3(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfPower.WATT
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2128,6 +2138,7 @@ class ESolarInverterGV1(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2188,6 +2199,7 @@ class ESolarInverterGV2(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2248,6 +2260,7 @@ class ESolarInverterGV3(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
         self._attr_device_class = SensorDeviceClass.VOLTAGE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2308,6 +2321,7 @@ class ESolarInverterGC1(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2368,6 +2382,7 @@ class ESolarInverterGC2(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2428,6 +2443,7 @@ class ESolarInverterGC3(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -2641,6 +2657,7 @@ class ESolarInverterTemperature(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
         self._attr_device_class = SensorDeviceClass.TEMPERATURE
         self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
