@@ -1406,7 +1406,9 @@ class ESolarInverterPower(ESolarSensor):
                 self._attr_extra_state_attributes[P_UID] = plant["plantuid"]
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             self._attr_extra_state_attributes[I_MODEL] = kit[
                                 "devicetype"
                             ]
@@ -1414,6 +1416,8 @@ class ESolarInverterPower(ESolarSensor):
 
                             # Setup state
                             self._attr_native_value = float(kit["powernow"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1584,9 +1588,13 @@ class ESolarInverterPV1(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV1Volt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1645,9 +1653,13 @@ class ESolarInverterPV2(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV2Volt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1706,9 +1718,13 @@ class ESolarInverterPV3(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV3Volt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1767,9 +1783,13 @@ class ESolarInverterPC1(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV1Curr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1828,9 +1848,13 @@ class ESolarInverterPC2(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV2Curr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1889,9 +1913,13 @@ class ESolarInverterPC3(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["pV3Curr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -1949,12 +1977,16 @@ class ESolarInverterPW1(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             if float(kit["findRawdataPageList"]["pV1Power"]) == 0.0:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV1Curr"]) * float(kit["findRawdataPageList"]["pV1Volt"])
                             else:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV1Power"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2015,12 +2047,16 @@ class ESolarInverterPW2(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             if float(kit["findRawdataPageList"]["pV2Power"]) == 0.0:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV2Curr"]) * float(kit["findRawdataPageList"]["pV2Volt"])
                             else:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV2Power"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2081,12 +2117,16 @@ class ESolarInverterPW3(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             if kit["findRawdataPageList"]["pV3Power"] == 0.0:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV3Curr"]) * float(kit["findRawdataPageList"]["pV3Volt"])
                             else:
                                 self._attr_native_value = float(kit["findRawdataPageList"]["pV3Power"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2101,7 +2141,7 @@ class ESolarInverterPW3(ESolarSensor):
             for kit in plant["kitList"]:
                 if kit["devicesn"] != self.inverter_sn:
                     continue
-                if kit["onLineStr"] == "1":
+                if kit["onLineStr"] == "1" and not kit["findRawdataPageList"] is None:
                     # Setup state
                     if float(kit["findRawdataPageList"]["pV3Power"]) == 0.0:
                         value = float(kit["findRawdataPageList"]["pV3Curr"]) * float(kit["findRawdataPageList"]["pV3Volt"])
@@ -2148,9 +2188,13 @@ class ESolarInverterGV1(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["rGridVolt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2209,9 +2253,13 @@ class ESolarInverterGV2(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["sGridVolt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2270,9 +2318,13 @@ class ESolarInverterGV3(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["tGridVolt"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2331,9 +2383,13 @@ class ESolarInverterGC1(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["rGridCurr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2392,9 +2448,13 @@ class ESolarInverterGC2(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["sGridCurr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2453,9 +2513,13 @@ class ESolarInverterGC3(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["tGridCurr"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
@@ -2667,9 +2731,13 @@ class ESolarInverterTemperature(ESolarSensor):
                 self._attr_available = True
                 if "kitList" in plant and plant["kitList"] is not None:
                     for kit in plant["kitList"]:
-                        if kit["devicesn"] == self.inverter_sn:
+                        if kit["devicesn"] != self.inverter_sn:
+                            continue
+                        if kit["onLineStr"] == "1":
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["deviceTemp"])
+                        else:
+                            self._attr_native_value = None
 
     @property
     def native_value(self) -> float | None:
