@@ -10,7 +10,7 @@ _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://fopapp.saj-electric.com/sajAppApi/api"
 BASE_URL_WEB = "https://fop.saj-electric.com/saj"
-WEB_TIMEOUT = 10
+WEB_TIMEOUT = 30
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
