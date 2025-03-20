@@ -2345,6 +2345,7 @@ class ESolarInverterTemperature(ESolarSensor):
         super().__init__(
             coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
         )
+        self._attr_native_value = None
         self._last_updated: datetime.datetime | None = None
         self._attr_available = False
         self._attr_unique_id = f"Temp_{inverter_sn}"
@@ -2370,7 +2371,7 @@ class ESolarInverterTemperature(ESolarSensor):
                     for kit in plant["kitList"]:
                         if kit["devicesn"] != self.inverter_sn:
                             continue
-                        if kit["onLineStr"] == "1":
+                        if kit["onLineStr"] == "1" and -200 < float(kit["findRawdataPageList"]["deviceTemp"]) < 200:
                             # Setup state
                             self._attr_native_value = float(kit["findRawdataPageList"]["deviceTemp"])
                         else:
@@ -2389,7 +2390,7 @@ class ESolarInverterTemperature(ESolarSensor):
             for kit in plant["kitList"]:
                 if kit["devicesn"] != self.inverter_sn:
                     continue
-                if kit["onLineStr"] == "1":
+                if kit["onLineStr"] == "1" and -200 < float(kit["findRawdataPageList"]["deviceTemp"]) < 200:
                     # Setup state
                     value = float(kit["findRawdataPageList"]["deviceTemp"])
 
