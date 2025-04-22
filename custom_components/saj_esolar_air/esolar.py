@@ -1,15 +1,18 @@
 """ESolar Cloud Platform data fetchers."""
 import calendar
 import datetime
+import time
 from datetime import timedelta
 import logging
-
+import random
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
 import requests
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE_URL = "https://fopapp.saj-electric.com/sajAppApi/api"
-BASE_URL_WEB = "https://fop.saj-electric.com/saj"
+BASE_URL = "https://eop.saj-electric.com/dev-api/api/v1/monitor/sec"
+BASE_URL_WEB = "https://eop.saj-electric.com/dev-api/api/v1/sys"
 WEB_TIMEOUT = 30
 
 BASIC_TEST = False
@@ -69,6 +72,25 @@ def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=
 
     return plant_info
 
+def calc_signature(appProjectName,clientDate,lang,timeStamp,random,clientId):
+    return ''
+
+def unpad(ct):
+    return ct[:-ct[-1]]
+
+def pad(m):
+    return m+chr(16-len(m)%16)*(16-len(m)%16)
+
+def encrypt(data, key):
+    key = key or b"1grLx91U40VawzhRAm7E"
+    iv = b'Sixteen byte iv__'
+    cipher = AES.new(key, AES.MODE_ECB, iv)
+    ciphertext = cipher.encrypt(pad(data)).encode('base64')
+    return ciphertext
+
+def generatkey(length):
+    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return ''.join(random.choice(chars) for _ in range(length))
 
 def esolar_web_autenticate(username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
@@ -77,13 +99,28 @@ def esolar_web_autenticate(username, password):
 
     try:
         session = requests.Session()
+        random = generatkey(32)
+        appProjectName = "elekeeper"
+        clientId = "esolar - monitor - admin"
+        clientDate = datetime.date.today().strftime(" % Y - %m - %d")
+        lang = "en"
+        timestamp = time.time()
+        signature = calc_signature(appProjectName,clientDate,lang,timestamp,random,clientId)
         response = session.post(
             BASE_URL_WEB + "/login",
             data={
-                "lang": "en",
+                "lang": lang,
                 "username": username,
-                "password": password,
+                "password": encrypt(password),
                 "rememberMe": "true",
+                "loginType": 1,
+                "timeStamp": timestamp,
+                "appProjectName": appProjectName,
+                "clientDate": clientDate,
+                "random": random,
+                "clientId": clientId,
+                "signParams": "appProjectName,clientDate,lang,timeStamp,random,clientId",
+                "signature": signature
             },
             timeout=WEB_TIMEOUT,
         )
@@ -108,7 +145,7 @@ def esolar_web_autenticate(username, password):
 def web_get_plant(session, requested_plant_list=None):
     """Retrieve the platUid from WEB Portal using web_authenticate."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plants")
 
     if BASIC_TEST:
         return web_get_plant_static_h1_r5()
@@ -116,7 +153,7 @@ def web_get_plant(session, requested_plant_list=None):
     try:
         output_plant_list = []
         response = session.post(
-            BASE_URL_WEB + "/monitor/site/getUserPlantList",
+            BASE_URL_WEB + "getUserPlantList",
             data={
                 "pageNo": "",
                 "pageSize": "",

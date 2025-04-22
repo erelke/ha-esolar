@@ -1,0 +1,55 @@
+lang=en&password=52748feb46ddb27198c7b802435952ee&rememberMe=true&username=eross%40korona.info.hu&loginType=1&appProjectName=elekeeper&clientDate=2025-04-22&timeStamp=1745305329396&random=xck3sbPhZiDP7s7TGxZHj4BZCh5peRbK&clientId=esolar-monitor-admin&signParams=appProjectName%2CclientDate%2Clang%2CtimeStamp%2Crandom%2CclientId&signature=0F4F78DA52FA70BE9F4F68B9142C4CE4569969F8
+
+https://eop.saj-electric.com/dev-api/api/v1/sys/login
+
+POST
+payload:
+
+lang: en
+password: 52748feb46ddb27198c7b802435952ee
+rememberMe: true
+username: eross@korona.info.hu
+loginType: 1
+appProjectName: elekeeper
+clientDate: 2025-04-22
+timeStamp: 1745305329396
+random: xck3sbPhZiDP7s7TGxZHj4BZCh5peRbK
+clientId: esolar-monitor-admin
+signParams: appProjectName,clientDate,lang,timeStamp,random,clientId
+signature: 0F4F78DA52FA70BE9F4F68B9142C4CE4569969F8
+
+"0627": function(e, t, n) {
+        "use strict";
+        n("d3b7"),
+        n("25f0");
+        var a = n("3452")
+          , o = n.n(a);
+        t["a"] = {
+            generatekey: function(e) {
+                for (var t = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789", n = "", a = 0; a < e; a++) {
+                    var o = Math.floor(Math.random() * t.length);
+                    n += t.substring(o, o + 1)
+                }
+                return n
+            },
+            encrypt: function(e, t) {
+                t = t || "1grLx91U40VawzhRAm7E";
+                var n = o.a.enc.Utf8.parse(t)
+                  , a = o.a.enc.Utf8.parse(e)
+                  , c = o.a.AES.encrypt(a, n, {
+                    mode: o.a.mode.ECB,
+                    padding: o.a.pad.Pkcs7
+                });
+                return c.toString()
+            },
+            decrypt: function(e, t) {
+                t = t || "1grLx91U40VawzhRAm7E";
+                var n = o.a.enc.Utf8.parse(t)
+                  , a = o.a.AES.decrypt(e, n, {
+                    mode: o.a.mode.ECB,
+                    padding: o.a.pad.Pkcs7
+                });
+                return o.a.enc.Utf8.stringify(a).toString()
+            }
+        }
+    }
