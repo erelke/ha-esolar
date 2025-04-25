@@ -365,8 +365,8 @@ class ESolarPeakList(TypedDict):
 class ESolarPlantList(TypedDict):
     """API response for plantList."""
 
-    plantuid: str
-    plantname: str
+    plantUid: str
+    plantName: str
     systempower: float
     currency: str
     type: int
@@ -398,7 +398,7 @@ class ESolarPlantList(TypedDict):
     peakList: None | list[ESolarPeakList]
     kitList: None | list[ESolarKitList]
     beanList: None | list[ESolarBeanList]
-
+    devices: dict
 
 class ESolarResponse(TypedDict):
     """API response."""

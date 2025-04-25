@@ -1,15 +1,24 @@
 """ESolar Cloud Platform data fetchers."""
 import calendar
 import datetime
+import time
 from datetime import timedelta
 import logging
-
+import random
+from logging.config import stopListening
+from Crypto.Cipher import AES
+from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
+import hashlib
+import binascii
+import json
 import requests
+import urllib.parse
+import sys
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE_URL = "https://fopapp.saj-electric.com/sajAppApi/api"
-BASE_URL_WEB = "https://fop.saj-electric.com/saj"
+BASE_URL = "https://eop.saj-electric.com/dev-api/api/v1"
 WEB_TIMEOUT = 30
 
 BASIC_TEST = False
@@ -53,8 +62,15 @@ def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=
         session = esolar_web_autenticate(username, password)
         plant_info = web_get_plant(session, plant_list)
         web_get_plant_details(session, plant_info)
-        web_get_plant_detailed_chart(session, plant_info)
-        web_get_device_page_list(session, plant_info, use_pv_grid_attributes)
+        web_get_plant_statistics(session, plant_info)
+        web_get_device_info(session, plant_info)
+        web_get_device_rawData(session, plant_info)
+
+        plant_info['status'] = 'success'
+
+        # with open('plant_info.json', 'w') as json_file:
+        #     json.dump(plant_info, json_file, indent=4)
+
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -70,6 +86,112 @@ def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=
     return plant_info
 
 
+def sha1_hash(data):
+    """SHA-1 hash kiszámítása, megfelelően konvertálva 32 bites előjeles számokká."""
+    if isinstance(data, str):
+        data = data.encode()  # String átalakítása byte formátumba
+    elif isinstance(data, bytes):
+        data = bytearray(data)  # Ha byte-ként jön, átalakítjuk megfelelően
+    else:
+        data = str(data).encode()  # Egyéb típusok átalakítása
+
+    sha1 = hashlib.sha1()
+    sha1.update(data)
+
+    # SHA-1 hash 20 bájt, 5 darab 32 bites számként visszaadva
+    result = [int.from_bytes(sha1.digest()[i:i + 4], "big", signed=True) for i in range(0, 20, 4)]
+    return result
+
+def extract_bytes_from_words(words):
+    """32 bites számokat átalakít 8 bites byte-listává."""
+    t = []
+    for n in range(0, 32 * len(words), 8):
+        t.append((words[n >> 5] >> (24 - n % 32)) & 255)
+    return t
+
+def bytes_to_hex_string(e):
+    """Bytes lista átalakítása hexadecimális stringgé."""
+    t = []
+    for n in range(len(e)):
+        t.append(hex(e[n] >> 4)[2:])  # Magasabb 4 bit átalakítása hexadecimálissá
+        t.append(hex(e[n] & 15)[2:])  # Alacsonyabb 4 bit átalakítása hexadecimálissá
+    return "".join(t)
+
+def sign(data):
+    n = sha1_hash(data)
+    b = extract_bytes_from_words(n)
+    h = bytes_to_hex_string(b)
+    return h
+
+def hex_string_to_signed_array(hex_str):
+    """Hexadecimális karakterlánc átalakítása előjeles 32 bites számokat tartalmazó tömbbé."""
+    t = len(hex_str)
+    n = [0] * ((t + 7) // 8)  # Létrehozunk egy megfelelő méretű listát
+
+    for r in range(0, t, 2):
+        byte_val = int(hex_str[r:r + 2], 16)  # Hexadecimális érték konvertálása
+        n[r >> 3] |= byte_val << (24 - (r % 8) * 4)  # Biteltolás
+
+    # Az előjeles 32 bites konverzió biztosítása
+    n = [(x & 0x7FFFFFFF) - (x & 0x80000000) for x in n]
+
+    return n
+
+def parse_string(e):
+    """Szöveg karakterkódokból számtömbbé alakítása."""
+    t = len(e)
+    n = [0] * ((t + 3) // 4)  # Létrehozunk egy megfelelő méretű listát
+
+    for r in range(t):
+        char_code = ord(e[r]) & 255  # Unicode karakterek alsó 8 bitjének kinyerése
+        n[r >> 2] |= char_code << (24 - (r % 4) * 8)
+
+    return n, t  # Hasonló visszatérési érték, mint az eredeti JS függvény
+
+def process_text(e):
+    """Szöveg kódolása és feldolgozása."""
+    encoded = urllib.parse.quote(e)  # JavaScript encodeURIComponent megfelelője
+    decoded = urllib.parse.unquote(encoded)  # JavaScript unescape megfelelője
+    return parse_string(decoded)  # Az előző parse_string függvény meghívása
+
+def dict_to_sorted_string(data):
+    """Szótár elemeit átalakítja abc sorrendbe, majd kulcs=érték formátumban összefűzi."""
+    sorted_items = sorted(data.items())  # Kulcsok alapján rendezés
+    result_string = "&".join(f"{k}={v}" for k, v in sorted_items)  # Összefűzés
+    return result_string
+
+def calc_signature(dict):
+    keys = dict.keys()
+    keys_str = ','.join(keys)
+    string = dict_to_sorted_string(dict)+"&key=ktoKRLgQPjvNyUZO8lVc9kU1Bsip6XIe" #esolar app.js
+    h = hashlib.md5(string.encode('latin-1')).hexdigest()
+    signature = sign(h).upper()
+
+    dict['signature'] = signature
+    dict['signParams'] = keys_str
+    return dict
+
+def pad_pkcs7(data, block_size=16):
+    """PKCS7 padding hozzáadása, hogy kompatibilis legyen a JavaScript verzióval."""
+    padding_len = block_size - (len(data) % block_size)
+    return data + bytes([padding_len] * padding_len)
+
+def aes_ecb_encrypt(plaintext, key_hex):
+    """AES-ECB titkosítás hexadecimális kulccsal, PKCS7 padding-et alkalmazva."""
+    key = binascii.unhexlify(key_hex)  # Hex kulcs átalakítása byte formátumba
+    cipher = AES.new(key, AES.MODE_ECB)  # AES-ECB titkosító inicializálása
+    padded_plaintext = pad_pkcs7(plaintext.encode())  # PKCS7 padding hozzáadása
+    encrypted_bytes = cipher.encrypt(padded_plaintext)  # Titkosítás
+    return binascii.hexlify(encrypted_bytes).decode()  # Hexadecimális eredmény
+
+def encrypt(plaintext):
+    key_hex = 'ec1840a7c53cf0709eb784be480379b6' #esolar app.js
+    return aes_ecb_encrypt(plaintext, key_hex)
+
+def generatkey(length):
+    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+    return ''.join(random.choice(chars) for _ in range(length))
+
 def esolar_web_autenticate(username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
@@ -77,15 +199,31 @@ def esolar_web_autenticate(username, password):
 
     try:
         session = requests.Session()
-        response = session.post(
-            BASE_URL_WEB + "/login",
-            data={
-                "lang": "en",
-                "username": username,
-                "password": password,
-                "rememberMe": "true",
-            },
-            timeout=WEB_TIMEOUT,
+        random = generatkey(32)
+
+        sign = {
+            "appProjectName": "elekeeper",
+            "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
+            "lang": "en",
+            "timeStamp": int(time.time()*1000),
+            "random": random,
+            "clientId": "esolar-monitor-admin"
+        }
+
+        login_data = dict({
+            "username": username,
+            "password": encrypt(password),
+            "rememberMe": "false",
+            "loginType": 1,
+        })
+        signed = calc_signature(sign)
+        data = signed | login_data
+        response = (
+            session.post(
+                BASE_URL + "/sys/login",
+                data = data,
+                timeout=WEB_TIMEOUT,
+            )
         )
 
         response.raise_for_status()
@@ -93,7 +231,18 @@ def esolar_web_autenticate(username, password):
         if response.status_code != 200:
             raise ValueError(f"Login failed, returned {response.status_code}")
 
-        return session
+        answer = json.loads(response.text)
+
+        if "errCode" in answer and answer["errCode"] != 0:
+            _LOGGER.error(f"Login failed, returned {answer['errMsg']}")
+            raise ValueError('Error message in answer: ' + answer['errMsg'])
+        else:
+            if "data" in answer and "token" in answer['data']:
+                session.headers.update({'Authorization': answer['data']['tokenHead'] + answer['data']['token']})
+                return session
+            else:
+                _LOGGER.error(f"Login failed, returned {answer}")
+                raise ValueError('Token not found in answer: ' + response.text)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -108,44 +257,46 @@ def esolar_web_autenticate(username, password):
 def web_get_plant(session, requested_plant_list=None):
     """Retrieve the platUid from WEB Portal using web_authenticate."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plants")
 
     if BASIC_TEST:
         return web_get_plant_static_h1_r5()
 
     try:
         output_plant_list = []
-        response = session.post(
-            BASE_URL_WEB + "/monitor/site/getUserPlantList",
-            data={
-                "pageNo": "",
-                "pageSize": "",
-                "orderByIndex": "",
-                "officeId": "",
-                "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
-                "runningState": "",
-                "selectInputType": "",
-                "plantName": "",
-                "deviceSn": "",
-                "type": "",
-                "countryCode": "",
-                "isRename": "",
-                "isTimeError": "",
-                "systemPowerLeast": "",
-                "systemPowerMost": "",
-            },
+        data = {
+            "pageNo": 1,
+            "pageSize": 500,
+            'appProjectName': 'elekeeper',
+            'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+            'lang': 'en',
+            'timeStamp': int(time.time() * 1000),
+            'random': generatkey(32),
+            'clientId': 'esolar-monitor-admin',
+        }
+
+        signed = calc_signature(data)
+
+        response = session.get(
+            BASE_URL + "/monitor/plant/getEndUserPlantList",
+            params=signed,
             timeout=WEB_TIMEOUT,
         )
 
         response.raise_for_status()
-        plant_list = response.json()
-        if requested_plant_list is not None:
-            for plant in plant_list["plantList"]:
-                if plant["plantname"] in requested_plant_list:
-                    output_plant_list.append(plant)
-            return {"status": plant_list["status"], "plantList": output_plant_list}
 
-        return plant_list
+        if response.status_code != 200:
+            raise ValueError(f"Get plant error: {response.status_code}")
+
+        plant_list = response.json()
+
+        if requested_plant_list is not None:
+            for plant in plant_list["data"]['list']:
+                if plant["plantName"] in requested_plant_list:
+                    output_plant_list.append(plant)
+            return {"plantList": output_plant_list}
+
+        return {"plantList": plant_list["data"]['list']}
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -165,19 +316,32 @@ def web_get_plant_details(session, plant_info):
     try:
         device_list = []
         for plant in plant_info["plantList"]:
-            response = session.post(
-                BASE_URL_WEB + "/monitor/site/getPlantDetailInfo",
-                data={
-                    "plantuid": plant["plantuid"],
-                    "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
-                },
-                timeout=WEB_TIMEOUT,
+            data = {
+                "plantUid": plant["plantUid"],
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                BASE_URL + "/monitor/plant/getOnePlantInfo", #/monitor/site/getPlantDetailInfo
+                params = signed,
+                timeout=WEB_TIMEOUT
             )
 
             response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get plant detail error: {response.status_code}")
+
             plant_detail = response.json()
-            plant.update(plant_detail)
-            for device in plant_detail["plantDetail"]["snList"]:
+            plant.update(plant_detail["data"])
+            for device in plant_detail["data"]["deviceSnList"]:
                 device_list.append(device)
 
     except requests.exceptions.HTTPError as errh:
@@ -189,69 +353,38 @@ def web_get_plant_details(session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
-
-def web_get_plant_detailed_chart(session, plant_info):
-    """Retrieve the kitList from the WEB Portal with web_authenticate."""
+def web_get_plant_statistics(session, plant_info):
+    """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
 
     try:
-        today = datetime.date.today()
-        previous_chart_day = today - timedelta(days=1)
-        next_chart_day = today + timedelta(days=1)
-        chart_day = today.strftime("%Y-%m-%d")
-        previous_chart_month = add_months(today, -1).strftime("%Y-%m")
-        next_chart_month = add_months(today, 1).strftime("%Y-%m")
-        chart_month = today.strftime("%Y-%m")
-        previous_chart_year = add_years(today, -1).strftime("%Y")
-        next_chart_year = add_years(today, 1).strftime("%Y")
-        chart_year = today.strftime("%Y")
-        epochmilliseconds = round(
-            int(
-                (
-                    datetime.datetime.utcnow() - datetime.datetime(1970, 1, 1)
-                ).total_seconds()
-                * 1000
+         for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                BASE_URL + "/monitor/home/getPlantStatisticsData",
+                params = signed,
+                timeout=WEB_TIMEOUT
             )
-        )
-        client_date = datetime.date.today().strftime("%Y-%m-%d")
 
-        for plant in plant_info["plantList"]:
-            #
-            # NOTE : This URL now takes a sinle inverter, but it should somehow take a list
-            #
-            # deviceSnArr={plant['plantDetail']['snList'][0]  <<== Is correct if there is only one inverter in the system
-            #
-            bean = []
-            peak_pow = []
-            for inverter in plant["plantDetail"]["snList"]:
-                if plant["type"] == 3:
-                    # Battery system
-                    url = f"{BASE_URL_WEB}/monitor/site/getPlantDetailChart2?plantuid={plant['plantuid']}&chartDateType=1&energyType=0&clientDate={client_date}&deviceSnArr=&chartCountType=2&previousChartDay={previous_chart_day}&nextChartDay={next_chart_day}&chartDay={chart_day}&previousChartMonth={previous_chart_month}&nextChartMonth={next_chart_month}&chartMonth={chart_month}&previousChartYear={previous_chart_year}&nextChartYear={next_chart_year}&chartYear={chart_year}&elecDevicesn={inverter}&_={epochmilliseconds}"
-                else:
-                    # Normal system
-                    url = f"{BASE_URL_WEB}/monitor/site/getPlantDetailChart2?plantuid={plant['plantuid']}&chartDateType=1&energyType=0&clientDate={client_date}&deviceSnArr={inverter}&chartCountType=2&previousChartDay={previous_chart_day}&nextChartDay={next_chart_day}&chartDay={chart_day}&previousChartMonth={previous_chart_month}&nextChartMonth={next_chart_month}&chartMonth={chart_month}&previousChartYear={previous_chart_year}&nextChartYear={next_chart_year}&chartYear={chart_year}&elecDevicesn=&_={epochmilliseconds}"
+            response.raise_for_status()
 
-                _LOGGER.debug("Fetching URL    : %s", url)
-                response = session.post(url, timeout=WEB_TIMEOUT)
-                response.raise_for_status()
-                plant_chart = response.json()
-                if VERBOSE_DEBUG:
-                    _LOGGER.debug(
-                        "\n.../getPlantDetailChart2\n------------------------\n%s",
-                        plant_chart,
-                    )
-                if (plant_chart["type"]) == 0:
-                    tmp = {}
-                    tmp.update({"devicesn": inverter})
-                    tmp.update({"peakPower": plant_chart["peakPower"]})
-                    peak_pow.append(tmp)
-                    plant.update({"peakList": peak_pow})
-                    # plant.update({"peakPower": plant_chart["peakPower"]})
-                elif (plant_chart["type"]) == 1:
-                    plant_chart["viewBean"].update({"devicesn": inverter})
-                    bean.append(plant_chart["viewBean"])
-                    plant.update({"beanList": bean})
+            if response.status_code != 200:
+                raise ValueError(f"Get plant statistics data error: {response.status_code}")
+
+            plant_statistics = response.json()
+            plant.update(plant_statistics["data"])
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -263,98 +396,92 @@ def web_get_plant_detailed_chart(session, plant_info):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_device_page_list(session, plant_info, use_pv_grid_attributes):
-    """Retrieve the platUid from the WEB Portal with web_authenticate."""
+def web_get_device_info(session, plant_info):
+    """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
 
-    headers = {
-        "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
-    }
+    try:
+        for plant in plant_info["plantList"]:
+            for device in plant["devices"]:
+                data = {
+                    "deviceSn": device["deviceSn"],
+                    'appProjectName': 'elekeeper',
+                    'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                    'lang': 'en',
+                    'timeStamp': int(time.time() * 1000),
+                    'random': generatkey(32),
+                    'clientId': 'esolar-monitor-admin',
+                }
+
+                signed = calc_signature(data)
+
+                response = session.get(
+                    BASE_URL + "/monitor/device/getOneDeviceInfo",
+                    params = signed,
+                    timeout=WEB_TIMEOUT
+                )
+
+                response.raise_for_status()
+
+                if response.status_code != 200:
+                    raise ValueError(f"Get device {device['deviceSn']} detail error: {response.status_code}")
+
+                device_detail = response.json()
+                device.update(device_detail["data"])
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+
+def web_get_device_rawData(session, plant_info):
+    """Retrieve platUid from the WEB Portal using web_authenticate."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obain plants")
 
     try:
         for plant in plant_info["plantList"]:
-            _LOGGER.debug("Plant UID: %s", plant["plantuid"])
-            _LOGGER.debug("Plant Type: %s", plant["type"])
+            for device in plant["devices"]:
+                data = {
+                    'appProjectName': 'elekeeper',
+                    'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                    'lang': 'en',
+                    'timeStamp': int(time.time() * 1000),
+                    'random': generatkey(32),
+                    'clientId': 'esolar-monitor-admin',
+                }
 
-            chart_month = datetime.date.today().strftime("%Y-%m")
-            url = f"{BASE_URL_WEB}/cloudMonitor/device/findDevicePageList"
-            payload = f"officeId=1&pageNo=&pageSize=&orderName=1&orderType=2&plantuid={plant['plantuid']}&deviceStatus=&localDate={datetime.date.today().strftime('%Y-%m-%d')}&localMonth={chart_month}"
-            _LOGGER.debug("Fetching URL    : %s", url)
-            _LOGGER.debug("Fetching Payload: %s", payload)
-            response = session.post(
-                url, headers=headers, data=payload, timeout=WEB_TIMEOUT
-            )
-            response.raise_for_status()
-            device_list = response.json()["list"]
-            if VERBOSE_DEBUG:
-                _LOGGER.debug(
-                    "\n.../findDevicePageList\n----------------------\n%s", device_list
+                payload = {
+                    "deviceSn": device["deviceSn"],
+                    "pageSize": 1,
+                    "pageNo": 1,
+                    "deviceType": 0,
+                    'timeStr': datetime.date.today().strftime("%Y-%m-%d 00:00:00"),
+                    "startTime": datetime.date.today().strftime("%Y-%m-%d 00:00:00"),
+                    "endTime": datetime.date.today().strftime("%Y-%m-%d 23:59:59"),
+                }
+
+                signed = calc_signature(data)
+
+                response = session.post(
+                    BASE_URL + "/monitor/deviceData/findRawdataPageList",
+                    data = payload | signed,
+                    timeout=WEB_TIMEOUT
                 )
 
-            kit = []
-            for device in device_list:
-                if not device["devicesn"] in plant["plantDetail"]["snList"]:
-                    continue
-                _LOGGER.debug("Device SN: %s", device["devicesn"])
-                if use_pv_grid_attributes:
-                    url = f"{BASE_URL_WEB}/cloudMonitor/deviceInfo/findRawdataPageList"
-                    payload = f"deviceSn={device['devicesn']}&deviceType={device['type']}&timeStr={datetime.date.today().strftime('%Y-%m-%d')}"
-                    _LOGGER.debug("Fetching URL    : %s", url)
-                    _LOGGER.debug("Fetching Payload: %s", payload)
-                    response = session.post(
-                        url, headers=headers, data=payload, timeout=WEB_TIMEOUT
-                    )
-                    response.raise_for_status()
-                    find_rawdata_page_list = response.json()
-                    _LOGGER.debug(
-                        "Result length   : %s", len(find_rawdata_page_list["list"])
-                    )
+                response.raise_for_status()
 
-                    if len(find_rawdata_page_list["list"]) > 0:
-                        device.update(
-                            {"findRawdataPageList": find_rawdata_page_list["list"][0]}
-                        )
-                    else:
-                        device.update({"findRawdataPageList": None})
+                if response.status_code != 200:
+                    raise ValueError(f"Get device {device['deviceSn']} raw data error: {response.status_code}")
 
-                    if VERBOSE_DEBUG and len(find_rawdata_page_list["list"]) > 0:
-                        _LOGGER.debug(
-                            "\n.../findRawdataPageList\n-----------------------\n%s",
-                            find_rawdata_page_list["list"][0],
-                        )
-
-                # Fetch battery for H1 system (UNTESTED CODE)
-                if plant["type"] == 3:
-                    _LOGGER.debug("Fetching storage information")
-                    epochmilliseconds = round(
-                        int(
-                            (
-                                datetime.datetime.utcnow()
-                                - datetime.datetime(1970, 1, 1)
-                            ).total_seconds()
-                            * 1000
-                        )
-                    )
-                    url = f"{BASE_URL_WEB}/monitor/site/getStoreOrAcDevicePowerInfo"
-                    payload = f"plantuid={plant['plantuid']}&devicesn={device['devicesn']}&_={epochmilliseconds}"
-                    _LOGGER.debug("Fetching URL    : %s", url)
-                    _LOGGER.debug("Fetching Payload: %s", payload)
-                    response = session.post(
-                        url, headers=headers, data=payload, timeout=WEB_TIMEOUT
-                    )
-                    response.raise_for_status()
-                    store_device_power = response.json()
-                    device.update(store_device_power)
-                    if VERBOSE_DEBUG:
-                        _LOGGER.debug(
-                            "getStoreOrAcDevicePowerInfo\n-------------------------------\n%s",
-                            store_device_power,
-                        )
-
-                kit.append(device)
-
-            plant.update({"kitList": kit})
+                raw = response.json()
+                device.update({"raw": raw["data"]["list"][0]})
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
