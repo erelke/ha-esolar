@@ -2,10 +2,8 @@
 import calendar
 import datetime
 import time
-from datetime import timedelta
 import logging
 import random
-from logging.config import stopListening
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
 from Crypto.Random import get_random_bytes
@@ -14,7 +12,6 @@ import binascii
 import json
 import requests
 import urllib.parse
-import sys
 
 _LOGGER = logging.getLogger(__name__)
 
