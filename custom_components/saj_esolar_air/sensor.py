@@ -67,7 +67,7 @@ async def async_setup_entry(
     """Set up the eSolar sensor."""
     coordinator: ESolarCoordinator = hass.data[DOMAIN][entry.entry_id]
     entities: list[ESolarSensor] = []
-    esolar_data: ESolarResponse = coordinator.data
+    esolar_data: dict = coordinator.data
     my_plants = entry.options.get(CONF_MONITORED_SITES)
     use_inverter_sensors = entry.options.get(CONF_INVERTER_SENSORS)
     use_pv_grid_attributes = entry.options.get(CONF_PV_GRID_DATA)
@@ -111,7 +111,7 @@ async def async_setup_entry(
                 )
 
             if use_inverter_sensors:
-                for inverter in plant["devices"]:
+                for inverter in plant["deviceSnList"]:
                     _LOGGER.debug(
                         "Setting up ESolarInverterEnergyTotal sensor for %s and inverter %s",
                         plant["plantName"],
