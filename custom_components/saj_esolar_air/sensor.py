@@ -309,6 +309,7 @@ class ESolarSensorPlantTotalEnergy(ESolarSensor):
         self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
         self._attr_device_class = SensorDeviceClass.ENERGY
         self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
@@ -566,13 +567,13 @@ class ESolarSensorInverterTodayAlarmNum(ESolarSensor):
         self._last_updated: datetime.datetime | None = None
         self._attr_available = False
 
-        self._attr_unique_id = f"inverter_{inverter_sn}_todayAlarmNum"
+        self._attr_unique_id = f"inverter_{self.inverter_sn}_todayAlarmNum"
 
         self._device_name = plant_name
         self._device_model = PLANT_MODEL
 
         self._attr_icon = ICON_ALARM
-        self._attr_name = f"Plant {self._plant_name} Today Alarm Num"
+        self._attr_name = f"Inverter {self.inverter_sn} Today Alarm Num"
         self._attr_native_unit_of_measurement = None
         self._attr_device_class = None
         self._attr_state_class = None
