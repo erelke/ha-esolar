@@ -1,6 +1,22 @@
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=faanskit&repository=ha-esolar&category=integration)
+# Home Assistant SAJ Elekeeper Custom Integration
+### V2.0.2 
 
-[![Donate](https://img.shields.io/badge/Donate-BuyMeCoffe-green.svg)](https://www.buymeacoffee.com/faanskit)
+This integration is based on [faanskit/ha-esolar](https://github.com/faanskit/ha-esolar). It is adapted to my needs. If you need it, use it.
+
+This version is based on the new Elekeeper app and the new SAJ portal. It uses password encryption and signing of api requests. I extracted the necessary keys from the SAJ portal source code. This can change at any time and then this integration will not work. Until then, use it.
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=erelke&repository=ha-esolar&category=integration)
+
+[![Donate](https://img.shields.io/badge/Donate-BuyMeCoffe-green.svg)](https://www.buymeacoffee.com/erelke)
+
+
+![sensors](https://github.com/erelke/ha-esolar/blob/main/images/ee_1.png)
+
+![diagnostics](https://github.com/erelke/ha-esolar/blob/main/images/ee_2.png)
+
+
+
+---
 
 # Home Assistant SAJ eSolar Custom Integration
 This integration uses cloud polling from the SAJ eSolar portal using a reverse engineered private API. 
