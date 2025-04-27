@@ -1,6 +1,6 @@
 {
     "name": "SAJ eSolar Air",
-    "homeassistant": "2022.11.1",
+    "homeassistant": "2025.2.2",
     "render_readme": true,
     "country": ["ALL"]
   }

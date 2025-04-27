@@ -14,7 +14,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_MONITORED_SITES, CONF_PV_GRID_DATA, CONF_UPDATE_INTERVAL, DOMAIN
+from .const import CONF_MONITORED_SITES, CONF_PV_GRID_DATA, CONF_UPDATE_INTERVAL, DOMAIN, CONF_PLANT_UPDATE_INTERVAL
 from .esolar import get_esolar_data
 
 _LOGGER = logging.getLogger(__name__)
@@ -57,11 +57,12 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
+        update_interval = timedelta(minutes=(entry.options.get(CONF_PLANT_UPDATE_INTERVAL) or CONF_UPDATE_INTERVAL))
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=timedelta(minutes=CONF_UPDATE_INTERVAL),
+            update_interval=update_interval,
             # update_interval=timedelta(seconds=20),
         )
         self._entry = entry

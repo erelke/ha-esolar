@@ -1,18 +1,42 @@
-# Home Assistant SAJ Elekeeper Custom Integration
-### V2.0.4 
+# Home Assistant SAJ eSolar _Elekeeper_ Custom Integration
+### V2.0.6
+
+![elekeeper](https://github.com/erelke/ha-esolar/blob/main/images/elekeeper.png)
 
 This integration is based on [faanskit/ha-esolar](https://github.com/faanskit/ha-esolar). It is adapted to my needs. If you need it, use it.
 
-This version is based on the new Elekeeper app and the new SAJ portal. It uses password encryption and signing of api requests. I extracted the necessary keys from the SAJ portal source code. This can change at any time and then this integration will not work. Until then, use it.
+This version is based on the new _Elekeeper_ app and the new SAJ portal. It uses password encryption and signing of api requests. I extracted the necessary keys from the SAJ portal source code. This can change at any time and then this integration will not work. Until then, use it.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=erelke&repository=ha-esolar&category=integration)
 
 [![Donate](https://img.shields.io/badge/Donate-BuyMeCoffe-green.svg)](https://www.buymeacoffee.com/erelke)
 
+Integration:
+
+![integration](https://github.com/erelke/ha-esolar/blob/main/images/ee_3.png)
+
+Config options:
+
+![config](https://github.com/erelke/ha-esolar/blob/main/images/ee_4.png)
+
+Sensors:
 
 ![sensors](https://github.com/erelke/ha-esolar/blob/main/images/ee_1.png)
 
+Diagnostics:
+
 ![diagnostics](https://github.com/erelke/ha-esolar/blob/main/images/ee_2.png)
+
+
+Development requests & data dump
+
+You can dump all the data received from the _elekeeper_ system to a file. To do this, use the dump method in the integration folder. The command is: 
+`python3 -c "from esolar import dump; dump('user@example.com', 'password')". 
+`
+This will create a **plant_info.json** file, which you can send to me, along with any further development requests.
+
+![dump](https://github.com/erelke/ha-esolar/blob/main/images/ee_5.png)
+
 
 
 
@@ -34,7 +58,7 @@ These attributes can be fetched by implementing a template sensor using jinja2. 
 
 # Installation
 ### HACS
-[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=faanskit&repository=ha-esolar&category=integration)
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=erelke&repository=ha-esolar&category=integration)
 
 ### Manual
 - Copy directory `custom_components/saj_esolar_air` to your `<config dir>/custom_components` directory.
@@ -92,7 +116,7 @@ The system will now reload and add two-tre new sensors per inverter (Energy Tota
 ![alt text](https://github.com/erelke/ha-esolar/blob/main/images/configure_step_3.png)
 
 ## Final result
-When the system is fully set-up it can look something like this
+When the system is fully set up it can look something like this
 
 ![alt text](https://github.com/erelke/ha-esolar/blob/main/images/all_done.png)
 

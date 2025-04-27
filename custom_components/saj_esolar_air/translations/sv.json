@@ -32,7 +32,8 @@
       "init": {
         "data": {
           "show_inverter_sensors": "Visa sensorer för växelriktare",
-          "show_pv_grid_data": "Visa Photovoltaics- och Gridattribut"
+          "show_pv_grid_data": "Visa Photovoltaics- och Gridattribut",
+          "plant_update_interval": "Uppdateringsintervall för solcellsanläggning (minuter)"
         },
         "description": "Dina val",
         "title": "SAJ eSolar"

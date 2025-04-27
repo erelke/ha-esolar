@@ -32,7 +32,8 @@
       "init": {
         "data": {
           "show_inverter_sensors": "Show inverter sensors",
-          "show_pv_grid_data": "Show Photovoltaics and Grid attributes"
+          "show_pv_grid_data": "Show Photovoltaics and Grid attributes",
+          "plant_update_interval": "Plant update interval (minutes)"
         },
         "description": "Select options",
         "title": "SAJ eSolar"

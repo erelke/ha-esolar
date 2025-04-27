@@ -19,6 +19,7 @@ from .const import (
     CONF_MONITORED_SITES,
     CONF_PV_GRID_DATA,
     DOMAIN,
+    CONF_PLANT_UPDATE_INTERVAL,
 )
 from .esolar import esolar_web_autenticate, web_get_plant
 
@@ -114,6 +115,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_MONITORED_SITES: self.sites,
                         CONF_INVERTER_SENSORS: False,
                         CONF_PV_GRID_DATA: False,
+                        CONF_PLANT_UPDATE_INTERVAL: 10
                     },
                 )
 
@@ -135,6 +137,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             if len(user_input[CONF_MONITORED_SITES]) > 0:
                 user_input.update({CONF_INVERTER_SENSORS: False})
                 user_input.update({CONF_PV_GRID_DATA: False})
+                user_input.update({CONF_PLANT_UPDATE_INTERVAL: 10})
                 return self.async_create_entry(
                     title=CONF_TITLE, data=self.data, options=user_input
                 )
@@ -167,7 +170,7 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
 
     def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         """Initialize options flow."""
-        self.config_entry = config_entry
+
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
@@ -195,6 +198,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                         CONF_PV_GRID_DATA,
                         default=self.config_entry.options.get(CONF_PV_GRID_DATA),
                     ): bool,
+                    vol.Required(
+                        CONF_PLANT_UPDATE_INTERVAL,
+                        default=self.config_entry.options.get(CONF_PLANT_UPDATE_INTERVAL),
+                    ): int,
                 }
             ),
         )

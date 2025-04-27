@@ -97,7 +97,7 @@ async def async_setup_entry(
                 "Setting up ESolarSensorPlant sensor for %s", plant["plantName"]
             )
             entities.append(
-                ESolarSensorPlant(coordinator, plant["plantName"], plant["plantUid"])
+                ESolarSensorPlant(coordinator, plant["plantName"], plant["plantUid"], use_pv_grid_attributes)
             )
             if plant["type"] == 0:
                 _LOGGER.debug(
@@ -257,11 +257,12 @@ class ESolarSensor(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 class ESolarSensorPlant(ESolarSensor):
     """Representation of a eSolar sensor for the plant."""
 
-    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid, use_pv_grid_attributes) -> None:
         """Initialize the sensor."""
         super().__init__(
             coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
         )
+        self._use_pv_grid_attributes = use_pv_grid_attributes
         self._last_updated: datetime.datetime | None = None
         self._attr_available = False
 
@@ -295,7 +296,9 @@ class ESolarSensorPlant(ESolarSensor):
             if plant["plantName"] == self._plant_name:
                 # Setup static attributes
                 self._attr_available = True
-                # self._attr_extra_state_attributes['Original data'] = plant
+                if self._use_pv_grid_attributes:
+                    self._attr_extra_state_attributes['Original data'] = plant
+
                 self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
                 self._attr_extra_state_attributes[P_CO2] = plant["totalReduceCo2"]
                 self._attr_extra_state_attributes[P_TREES] = plant["totalPlantTreeNum"]
@@ -325,8 +328,9 @@ class ESolarSensorPlant(ESolarSensor):
         value = None
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
-                # Setup dynamic attributes
-                # self._attr_extra_state_attributes['Original data'] = plant
+                # Set up dynamic attributes
+                if self._use_pv_grid_attributes:
+                    self._attr_extra_state_attributes['Original data'] = plant
                 self._attr_extra_state_attributes[P_CO2] = plant["totalReduceCo2"]
                 self._attr_extra_state_attributes[P_TREES] = plant["totalPlantTreeNum"]
 
@@ -633,7 +637,7 @@ class ESolarSensorInverterPeakPower(ESolarSensor):
                 self._attr_available = True
                 # Setup state
                 if plant["type"] == 0:
-                    peak_power = self._attr_native_value or float(0.0)
+                    peak_power = self.coordinator.hass.states.get(self._attr_unique_id) or float(0.0)
                     for kit in plant["devices"]:
                         if (kit['deviceSn'] == self._inverter_sn
                                 and kit['deviceStatisticsData'] is not None
@@ -1953,7 +1957,7 @@ class ESolarInverterTemperature(ESolarSensor):
                     for kit in plant["devices"]:
                         if kit["deviceSn"] != self._inverter_sn:
                             continue
-                        if -200 < float(kit["raw"]["deviceTemp"]) < 200:
+                        if 'raw' in kit and 'deviceTemp' in kit['raw'] and -200 < float(kit["raw"]["deviceTemp"]) < 200:
                             # Setup state
                             self._attr_native_value = float(kit["raw"]["deviceTemp"])
 
@@ -1970,7 +1974,7 @@ class ESolarInverterTemperature(ESolarSensor):
             for kit in plant["devices"]:
                 if kit["deviceSn"] != self._inverter_sn:
                     continue
-                if -200 < float(kit["raw"]["deviceTemp"]) < 200:
+                if 'raw' in kit and 'deviceTemp' in kit['raw'] and  -200 < float(kit["raw"]["deviceTemp"]) < 200:
                     # Setup state
                     value = float(kit["raw"]["deviceTemp"])
 

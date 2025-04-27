@@ -32,7 +32,8 @@
       "init": {
         "data": {
           "show_inverter_sensors": "Mutasd az inverter szenzorait",
-          "show_pv_grid_data": "Mutasd a napelem és a hálózat adatait"
+          "show_pv_grid_data": "Mutasd a napelem és a hálózat adatait",
+          "plant_update_interval": "Napelemes rendszer frissítési intervallum (perc)"
         },
         "description": "Válasz az alábbiakból",
         "title": "SAJ eSolar"

@@ -3,12 +3,13 @@ from typing import Final
 
 DOMAIN = "saj_esolar_air"
 CONF_MONITORED_SITES = "monitored_sites"
-CONF_UPDATE_INTERVAL = 1
-ATTRIBUTION = "Data provided by SAJ eSolar"
+CONF_UPDATE_INTERVAL = 5
+ATTRIBUTION = "Data provided by SAJ elekeeper"
 MANUFACTURER = "SAJ"
 
 CONF_INVERTER_SENSORS: Final = "show_inverter_sensors"
 CONF_PV_GRID_DATA: Final = "show_pv_grid_data"
+CONF_PLANT_UPDATE_INTERVAL: Final = "plant_update_interval"
 
 # Misc
 P_UNKNOWN = "Unknown"

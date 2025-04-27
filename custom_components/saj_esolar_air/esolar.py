@@ -17,6 +17,9 @@ _LOGGER = logging.getLogger(__name__)
 
 BASE_URL = "https://eop.saj-electric.com/dev-api/api/v1"
 WEB_TIMEOUT = 30
+AUTHORIZATION_TOKEN = None
+AUTHORIZATION_EXPIRES = None
+END_USER_PLANT_LIST = None
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
@@ -46,6 +49,12 @@ def add_years(source_date, years):
             - datetime.date(source_date.year, 1, 1)
         )
 
+def dump(username, password):
+    plant_info = get_esolar_data(username, password)
+
+    with open('plant_info.json', 'w') as json_file:
+        json.dump(plant_info, json_file, indent=4)
+    return
 
 def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=True):
     """SAJ eSolar Data Update."""
@@ -64,10 +73,6 @@ def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=
         web_get_device_rawData(session, plant_info)
 
         plant_info['status'] = 'success'
-
-        # with open('plant_info.json', 'w') as json_file:
-        #     json.dump(plant_info, json_file, indent=4)
-
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -194,8 +199,15 @@ def esolar_web_autenticate(username, password):
     if BASIC_TEST:
         return True
 
+    global AUTHORIZATION_TOKEN
+    global AUTHORIZATION_EXPIRES
+
     try:
         session = requests.Session()
+        if AUTHORIZATION_TOKEN is not None and AUTHORIZATION_EXPIRES is not None and AUTHORIZATION_EXPIRES < time.time():
+            session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
+            return session
+
         random = generatkey(32)
 
         sign = {
@@ -235,7 +247,12 @@ def esolar_web_autenticate(username, password):
             raise ValueError('Error message in answer: ' + answer['errMsg'])
         else:
             if "data" in answer and "token" in answer['data']:
-                session.headers.update({'Authorization': answer['data']['tokenHead'] + answer['data']['token']})
+                if 'expiresIn' in answer['data']:
+                    expires_in = int(answer['data']['expiresIn'])
+                    expires_at = int(time.time() - (expires_in/1000))-10
+                    AUTHORIZATION_EXPIRES = expires_at
+                AUTHORIZATION_TOKEN =  answer['data']['tokenHead'] + answer['data']['token']
+                session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
                 return session
             else:
                 _LOGGER.error(f"Login failed, returned {answer}")
@@ -252,7 +269,7 @@ def esolar_web_autenticate(username, password):
 
 
 def web_get_plant(session, requested_plant_list=None):
-    """Retrieve the platUid from WEB Portal using web_authenticate."""
+    """Retrieve the plantUid from WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain plants")
 
@@ -478,7 +495,10 @@ def web_get_device_rawData(session, plant_info):
                     raise ValueError(f"Get device {device['deviceSn']} raw data error: {response.status_code}")
 
                 raw = response.json()
-                device.update({"raw": raw["data"]["list"][0]})
+                if 'data' in raw and 'list' in raw['data'] and len(raw['data']['list']) > 0:
+                    device.update({"raw": raw["data"]["list"][0]})
+                else:
+                    device.update({"raw": {}})
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
