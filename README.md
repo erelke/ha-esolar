@@ -1,5 +1,5 @@
 # Home Assistant SAJ Elekeeper Custom Integration
-### V2.0.2 
+### V2.0.4 
 
 This integration is based on [faanskit/ha-esolar](https://github.com/faanskit/ha-esolar). It is adapted to my needs. If you need it, use it.
 
