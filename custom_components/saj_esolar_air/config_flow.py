@@ -42,7 +42,7 @@ class ESolarHub:
         self.plant_list: dict[str, Any] = {}
 
     def auth_and_get_solar_plants(self, username: str, password: str) -> bool:
-        """Download and list availablse inverters."""
+        """Download and list available inverters."""
         try:
             session = esolar_web_autenticate(username, password)
             self.plant_list = web_get_plant(session).get("plantList")
@@ -105,7 +105,7 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             _LOGGER.exception("Unexpected exception")
             errors["base"] = "unknown"
         else:
-            self.sites = [site["plantname"] for site in info["plant_list"]]
+            self.sites = [site["plantName"] for site in info["plant_list"]]
             if len(self.sites) == 1:
                 return self.async_create_entry(
                     title=CONF_TITLE,
