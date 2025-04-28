@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Uživatelské jméno",
+          "password": "Heslo",
+          "region": "Vyberte region, ve kterém se nachází váš solární energetický systém."
+        },
+        "description": "Zadejte uživatelské jméno a heslo ke svému účtu SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Lokality"
+        },
+        "description": "Vyberte lokality k monitorování",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Nelze se připojit",
+      "invalid_auth": "Neplatné ověření",
+      "unknown": "Neznámá chyba",
+      "no_sites": "Nebyla vybrána žádná sledovaná lokalita"
+    },
+    "abort": {
+      "already_configured": "Již nakonfigurováno"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Evropa – Pro uživatele žijící v Evropě",
+        "in": "Mezinárodní – Platí pro uživatele v Severní a Jižní Americe, Africe, Oceánii a dalších zemích a regionech Asie",
+        "cn": "Čína – Pro uživatele v Číně"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Zobrazit senzory střídače",
+          "show_pv_grid_data": "Zobrazit údaje o fotovoltaickém systému a síti",
+          "plant_update_interval": "Interval aktualizace systému (minuty)"
+        },
+        "description": "Vyberte možnosti",
+        "title": "SAJ eSolar"
+      }
+    }
+  }
+}

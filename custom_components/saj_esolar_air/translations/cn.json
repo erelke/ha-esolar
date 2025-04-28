@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "用户名",
+          "password": "密码",
+          "region": "请选择您的太阳能系统所在的地区。"
+        },
+        "description": "请输入您的 SAJ eSolar 账户的用户名和密码",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "站点"
+        },
+        "description": "选择要监控的站点",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "无法连接",
+      "invalid_auth": "身份验证无效",
+      "unknown": "未知错误",
+      "no_sites": "未选择任何监控站点"
+    },
+    "abort": {
+      "already_configured": "已配置"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "欧洲 – 适用于居住在欧洲的用户",
+        "in": "国际 – 适用于北美、南美、非洲、大洋洲以及亚洲其他国家和地区的用户",
+        "cn": "中国 – 适用于中国用户"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "显示逆变器传感器",
+          "show_pv_grid_data": "显示光伏和电网属性",
+          "plant_update_interval": "系统更新间隔（分钟）"
+        },
+        "description": "选择选项",
+        "title": "SAJ eSolar"
+      }
+    }
+  }
+}

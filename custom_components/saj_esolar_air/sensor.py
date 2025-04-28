@@ -88,6 +88,12 @@ async def async_setup_entry(
     if my_plants is None:
         return
 
+    hass.config_entries.async_update_entry(
+        entry, data={**entry.data, 'plant_info': esolar_data}
+    )
+
+    hass.data[DOMAIN] = entry.data  #Globális tárolás memóriában
+
     for enabled_plant in my_plants:
         for plant in esolar_data["plantList"]:
             if plant["plantName"] != enabled_plant:

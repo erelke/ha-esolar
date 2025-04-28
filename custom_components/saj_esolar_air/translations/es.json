@@ -1,0 +1,53 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Nombre de usuario",
+          "password": "Contraseña",
+          "region": "Seleccione la región donde se encuentra su sistema de energía solar."
+        },
+        "description": "Ingrese el nombre de usuario y la contraseña de su cuenta SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Sitios"
+        },
+        "description": "Seleccione los sitios a monitorear",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "No se puede conectar",
+      "invalid_auth": "Autenticación inválida",
+      "unknown": "Error desconocido",
+      "no_sites": "No se ha seleccionado ningún sitio monitoreado"
+    },
+    "abort": {
+      "already_configured": "Ya configurado"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Para usuarios que viven en Europa",
+        "in": "Internacional – Aplicable para usuarios en América del Norte, América del Sur, África, Oceanía y otros países y regiones de Asia",
+        "cn": "China – Para usuarios en China"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Mostrar sensores del inversor",
+          "show_pv_grid_data": "Mostrar atributos de fotovoltaicos y red",
+          "plant_update_interval": "Intervalo de actualización de la planta (minutos)"
+        },
+        "description": "Seleccione opciones",
+        "title": "SAJ eSolar"
+      }
+    }
+  }
+}

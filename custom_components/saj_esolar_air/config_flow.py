@@ -8,11 +8,12 @@ import requests
 import voluptuous as vol
 
 from homeassistant import config_entries
-from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_REGION, CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers import config_validation as cv
+from homeassistant.helpers.selector import SelectSelector, SelectSelectorConfig
 
 from .const import (
     CONF_INVERTER_SENSORS,
@@ -20,6 +21,10 @@ from .const import (
     CONF_PV_GRID_DATA,
     DOMAIN,
     CONF_PLANT_UPDATE_INTERVAL,
+    CONF_REGION,
+    CONF_REGION_EU,
+    CONF_REGION_IN,
+    CONF_REGION_CN
 )
 from .esolar import esolar_web_autenticate, web_get_plant
 
@@ -29,11 +34,20 @@ _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
+        vol.Required(CONF_REGION, default=CONF_REGION_EU): SelectSelector(
+            SelectSelectorConfig(
+                options=[
+                    CONF_REGION_EU,
+                    CONF_REGION_IN,
+                    CONF_REGION_CN
+                ],
+                translation_key=CONF_REGION
+            )
+        ),
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
     }
 )
-
 
 class ESolarHub:
     """SAJ eSolar configuration validations."""
@@ -42,11 +56,11 @@ class ESolarHub:
         """Initialize."""
         self.plant_list: dict[str, Any] = {}
 
-    def auth_and_get_solar_plants(self, username: str, password: str) -> bool:
+    def auth_and_get_solar_plants(self, region: str, username: str, password: str) -> bool:
         """Download and list available inverters."""
         try:
-            session = esolar_web_autenticate(username, password)
-            self.plant_list = web_get_plant(session).get("plantList")
+            session = esolar_web_autenticate(region, username, password)
+            self.plant_list = web_get_plant(region, session).get("plantList")
         except requests.exceptions.HTTPError:
             _LOGGER.error("Login: HTTPError")
             return False
@@ -68,17 +82,17 @@ async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str,
     hub = ESolarHub()
     if not await hass.async_add_executor_job(
         hub.auth_and_get_solar_plants,
+        data[CONF_REGION],
         data[CONF_USERNAME],
-        data[CONF_PASSWORD],
+        data[CONF_PASSWORD]
     ):
         raise InvalidAuth
     return {"plant_list": hub.plant_list}
 
-
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for eSolar."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self):
         """Set up the the config flow."""

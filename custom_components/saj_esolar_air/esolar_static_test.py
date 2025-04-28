@@ -72,7 +72,7 @@ def web_get_plant_static_h1_r5():
 
 
 def get_esolar_data_static_h1_r5(
-    username, password, plant_list, use_pv_grid_attributes
+    region, username, password, plant_list, use_pv_grid_attributes
 ):
     """SAJ eSolar Data Update - STATIC #3 TEST VERSION."""
     plant_info = {

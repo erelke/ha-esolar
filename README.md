@@ -1,5 +1,5 @@
 # Home Assistant SAJ eSolar _Elekeeper_ Custom Integration
-### V2.0.6
+### V2.0.7
 
 ![elekeeper](https://github.com/erelke/ha-esolar/blob/main/images/elekeeper.png)
 
@@ -28,14 +28,11 @@ Diagnostics:
 ![diagnostics](https://github.com/erelke/ha-esolar/blob/main/images/ee_2.png)
 
 
-Development requests & data dump
+## Bug report & Development requests & diagnostics data
 
-You can dump all the data received from the _elekeeper_ system to a file. To do this, use the dump method in the integration folder. The command is: 
-`python3 -c "from esolar import dump; dump('user@example.com', 'password')". 
-`
-This will create a **plant_info.json** file, which you can send to me, along with any further development requests.
+In case of an error or improvement request, please send the diagnostic data as well. See the image:
 
-![dump](https://github.com/erelke/ha-esolar/blob/main/images/ee_5.png)
+![diagnostics data](https://github.com/erelke/ha-esolar/blob/main/images/ee_6.png)
 
 
 

@@ -4,7 +4,8 @@
       "user": {
         "data": {
           "username": "Username",
-          "password": "Password"
+          "password": "Password",
+          "region": "Please select the region where your solar energy system is located."
         },
         "description": "Please enter the username and password for your SAJ eSolar account",
         "title":"SAJ eSolar"
@@ -25,6 +26,15 @@
     },
     "abort": {
       "already_configured": "Already configured"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europe – For users living in Europe",
+        "in": "International – Applicable for users in North America, South America, Africa, Oceania, and other countries and regions in Asia",
+        "cn": "China – For users in China"
+      }
     }
   },
   "options": {

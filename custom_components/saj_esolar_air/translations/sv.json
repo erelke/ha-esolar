@@ -4,7 +4,8 @@
       "user": {
         "data": {
           "username": "Användarnamn",
-          "password": "Lösenord"
+          "password": "Lösenord",
+          "region": "Vänligen välj den region där ditt solenergisystem är beläget"
         },
         "description": "Ange namn och lösen till ditt SAJ eSolar konto",
         "title":"SAJ eSolar"
@@ -25,6 +26,15 @@
     },
     "abort": {
       "already_configured": "Redan konfigurerad"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – För användare som bor i Europa",
+        "in": "Internationell – Gäller för användare i Nordamerika, Sydamerika, Afrika, Oceanien och andra länder och regioner i Asien",
+        "cn": "Kina – För användare i Kina"
+      }
     }
   },
   "options": {

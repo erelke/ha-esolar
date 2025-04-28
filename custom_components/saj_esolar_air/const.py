@@ -3,6 +3,10 @@ from typing import Final
 
 DOMAIN = "saj_esolar_air"
 CONF_MONITORED_SITES = "monitored_sites"
+CONF_REGION = "region"
+CONF_REGION_EU = "eu"
+CONF_REGION_IN = "in"
+CONF_REGION_CN = "cn"
 CONF_UPDATE_INTERVAL = 5
 ATTRIBUTION = "Data provided by SAJ elekeeper"
 MANUFACTURER = "SAJ"

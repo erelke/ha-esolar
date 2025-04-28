@@ -15,7 +15,6 @@ import urllib.parse
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE_URL = "https://eop.saj-electric.com/dev-api/api/v1"
 WEB_TIMEOUT = 30
 AUTHORIZATION_TOKEN = None
 AUTHORIZATION_EXPIRES = None
@@ -29,6 +28,17 @@ if BASIC_TEST:
         web_get_plant_static_h1_r5,
     )
 
+
+def base_url(region):
+    """SAJ eSolar Helper Function - Returns the base URL for the region."""
+    if region == "eu":
+        return "https://eop.saj-electric.com/dev-api/api/v1"
+    elif region == "in":
+        return "https://iop.saj-electric.com/dev-api/api/v1"
+    elif region == "cn":
+        return "https://op.saj-electric.cn/dev-api/api/v1"
+    else:
+        raise ValueError("Region not set. Please run Configure again")
 
 def add_months(sourcedate, months):
     """SAJ eSolar Helper Function - Adds a months to input."""
@@ -49,28 +59,28 @@ def add_years(source_date, years):
             - datetime.date(source_date.year, 1, 1)
         )
 
-def dump(username, password):
-    plant_info = get_esolar_data(username, password)
+def dump(region, username, password):
+    plant_info = get_esolar_data(region, username, password)
 
     with open('plant_info.json', 'w') as json_file:
         json.dump(plant_info, json_file, indent=4)
     return
 
-def get_esolar_data(username, password, plant_list=None, use_pv_grid_attributes=True):
+def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_attributes=True):
     """SAJ eSolar Data Update."""
     if BASIC_TEST:
         return get_esolar_data_static_h1_r5(
-            username, password, plant_list, use_pv_grid_attributes
+            region, username, password, plant_list, use_pv_grid_attributes
         )
 
     try:
         plant_info = None
-        session = esolar_web_autenticate(username, password)
-        plant_info = web_get_plant(session, plant_list)
-        web_get_plant_details(session, plant_info)
-        web_get_plant_statistics(session, plant_info)
-        web_get_device_info(session, plant_info)
-        web_get_device_rawData(session, plant_info)
+        session = esolar_web_autenticate(region, username, password)
+        plant_info = web_get_plant(region, session, plant_list)
+        web_get_plant_details(region, session, plant_info)
+        web_get_plant_statistics(region, session, plant_info)
+        web_get_device_info(region, session, plant_info)
+        web_get_device_rawData(region, session, plant_info)
 
         plant_info['status'] = 'success'
 
@@ -194,7 +204,7 @@ def generatkey(length):
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     return ''.join(random.choice(chars) for _ in range(length))
 
-def esolar_web_autenticate(username, password):
+def esolar_web_autenticate(region, username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
         return True
@@ -205,6 +215,9 @@ def esolar_web_autenticate(username, password):
     try:
         session = requests.Session()
         if AUTHORIZATION_TOKEN is not None and AUTHORIZATION_EXPIRES is not None and AUTHORIZATION_EXPIRES < time.time():
+            _LOGGER.debug(
+                f"Using cached token, expires in {AUTHORIZATION_EXPIRES - time.time()} seconds"
+            )
             session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
             return session
 
@@ -229,7 +242,7 @@ def esolar_web_autenticate(username, password):
         data = signed | login_data
         response = (
             session.post(
-                BASE_URL + "/sys/login",
+                base_url(region) + "/sys/login",
                 data = data,
                 timeout=WEB_TIMEOUT,
             )
@@ -253,6 +266,9 @@ def esolar_web_autenticate(username, password):
                     AUTHORIZATION_EXPIRES = expires_at
                 AUTHORIZATION_TOKEN =  answer['data']['tokenHead'] + answer['data']['token']
                 session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
+                _LOGGER.debug(
+                    f"Using new token, expires in {expires_at - time.time()} seconds ",
+                )
                 return session
             else:
                 _LOGGER.error(f"Login failed, returned {answer}")
@@ -268,7 +284,7 @@ def esolar_web_autenticate(username, password):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_plant(session, requested_plant_list=None):
+def web_get_plant(region, session, requested_plant_list=None):
     """Retrieve the plantUid from WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain plants")
@@ -292,7 +308,7 @@ def web_get_plant(session, requested_plant_list=None):
         signed = calc_signature(data)
 
         response = session.get(
-            BASE_URL + "/monitor/plant/getEndUserPlantList",
+            base_url(region) + "/monitor/plant/getEndUserPlantList",
             params=signed,
             timeout=WEB_TIMEOUT,
         )
@@ -322,7 +338,7 @@ def web_get_plant(session, requested_plant_list=None):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_plant_details(session, plant_info):
+def web_get_plant_details(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
@@ -343,7 +359,7 @@ def web_get_plant_details(session, plant_info):
             signed = calc_signature(data)
 
             response = session.get(
-                BASE_URL + "/monitor/plant/getOnePlantInfo", #/monitor/site/getPlantDetailInfo
+                base_url(region) + "/monitor/plant/getOnePlantInfo", #/monitor/site/getPlantDetailInfo
                 params = signed,
                 timeout=WEB_TIMEOUT
             )
@@ -367,7 +383,7 @@ def web_get_plant_details(session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
-def web_get_plant_statistics(session, plant_info):
+def web_get_plant_statistics(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
@@ -387,7 +403,7 @@ def web_get_plant_statistics(session, plant_info):
             signed = calc_signature(data)
 
             response = session.get(
-                BASE_URL + "/monitor/home/getPlantStatisticsData",
+                base_url(region) + "/monitor/home/getPlantStatisticsData",
                 params = signed,
                 timeout=WEB_TIMEOUT
             )
@@ -410,7 +426,7 @@ def web_get_plant_statistics(session, plant_info):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_device_info(session, plant_info):
+def web_get_device_info(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
@@ -431,7 +447,7 @@ def web_get_device_info(session, plant_info):
                 signed = calc_signature(data)
 
                 response = session.get(
-                    BASE_URL + "/monitor/device/getOneDeviceInfo",
+                    base_url(region) + "/monitor/device/getOneDeviceInfo",
                     params = signed,
                     timeout=WEB_TIMEOUT
                 )
@@ -454,7 +470,7 @@ def web_get_device_info(session, plant_info):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_device_rawData(session, plant_info):
+def web_get_device_rawData(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
@@ -484,7 +500,7 @@ def web_get_device_rawData(session, plant_info):
                 signed = calc_signature(data)
 
                 response = session.post(
-                    BASE_URL + "/monitor/deviceData/findRawdataPageList",
+                    base_url(region) + "/monitor/deviceData/findRawdataPageList",
                     data = payload | signed,
                     timeout=WEB_TIMEOUT
                 )

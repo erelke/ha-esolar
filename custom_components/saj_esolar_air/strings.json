@@ -4,7 +4,8 @@
       "user": {
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
-          "password": "[%key:common::config_flow::data::password%]"
+          "password": "[%key:common::config_flow::data::password%]",
+          "region": "Please select nodes - Please select the region corresponding to your business scope. The system will access the data and services specific to the selected region. Due to different laws and regulations, data may not be shared between regions. Please choose carefully.",
         },
         "description": "Please enter the username and password for your SAJ eSolar account",
         "title": "SAJ eSolar"
@@ -25,6 +26,15 @@
     },
     "abort": {
       "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "European Node - Applicable for users in Europe",
+        "in": "International Node - Applicable for users in North America, South America, Africa, Oceania, and other countries and regions in Asia",
+        "cn": "Chinese Node - Applicable for users in mainland China"
+      }
     }
   },
   "options": {

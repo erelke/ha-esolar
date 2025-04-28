@@ -4,7 +4,8 @@
       "user": {
         "data": {
           "username": "Felhasználónév",
-          "password": "Jeszó"
+          "password": "Jeszó",
+          "region": "Kérlek, válaszd ki a régiót, amelyben a napelemes rendszered található."
         },
         "description": "Kérlek add meg a SAJ eSolar felhasználóneved és jelszavad!",
         "title":"SAJ eSolar"
@@ -25,6 +26,15 @@
     },
     "abort": {
       "already_configured": "Már beállítva"
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Európa – Európában élő felhasználók számára",
+        "in": "Nemzetközi – Érvényes Észak-Amerika, Dél-Amerika, Afrika, Óceánia és más ázsiai országok és régiók felhasználói számára",
+        "cn": "Kína – Kínai felhasználók számára"
+      }
     }
   },
   "options": {
