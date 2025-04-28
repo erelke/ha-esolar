@@ -524,3 +524,4 @@ def web_get_device_rawData(region, session, plant_info):
         raise requests.exceptions.Timeout(errt)
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
+

@@ -40,6 +40,7 @@ def _async_get_diagnostics(
     data = {
         "name": entry.title,
         "entry": config,
+        "runtime_data": entry.runtime_data,
     }
 
     return data

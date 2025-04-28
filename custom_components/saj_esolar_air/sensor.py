@@ -51,7 +51,30 @@ from .const import (
     P_OWNER_NAME,
     P_OWNER_EMAIL,
     P_NO,
-    P_ID
+    P_ID,
+    P_NAME,
+    I_MODEL,
+    I_SN,
+    B_CAPACITY,
+    B_CURRENT,
+    B_POWER,
+    B_DIRECTION,
+    G_POWER,
+    B_GRID_DIRECT,
+    IO_POWER,
+    IO_DIRECTION,
+    PV_POWER,
+    PV_DIRECTION,
+    B_T_LOAD,
+    B_H_LOAD,
+    B_B_LOAD,
+    S_POWER,
+    B_DIR_STB,
+    B_DIR_DIS,
+    B_DIR_CH,
+    P_UNKNOWN,
+    B_EXPORT,
+    B_IMPORT
 )
 
 ICON_POWER = "mdi:solar-power"
@@ -88,9 +111,7 @@ async def async_setup_entry(
     if my_plants is None:
         return
 
-    hass.config_entries.async_update_entry(
-        entry, data={**entry.data, 'plant_info': esolar_data}
-    )
+    entry.runtime_data = esolar_data
 
     hass.data[DOMAIN] = entry.data  #Globális tárolás memóriában
 
@@ -127,6 +148,52 @@ async def async_setup_entry(
                 )
                 entities.append(
                     ESolarSensorPlantTodayEquivalentHours( coordinator, plant["plantName"], plant["plantUid"] )
+                )
+            elif plant["type"] == 3:
+                _LOGGER.debug(
+                    "Setting up ESolarSensorPlantBatterySellEnergy sensor for %s",
+                    plant["plantName"],
+                )
+                entities.append(
+                    ESolarSensorPlantBatterySellEnergy(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
+                )
+                _LOGGER.debug(
+                    "Setting up ESolarSensorPlantBatteryBuyEnergy sensor for %s",
+                    plant["plantName"],
+                )
+                entities.append(
+                    ESolarSensorPlantBatteryBuyEnergy(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
+                )
+                _LOGGER.debug(
+                    "Setting up ESolarSensorPlantBatteryChargeEnergy sensor for %s",
+                    plant["plantName"],
+                )
+                entities.append(
+                    ESolarSensorPlantBatteryChargeEnergy(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
+                )
+                _LOGGER.debug(
+                    "Setting up ESolarSensorPlantBatteryDischargeEnergy sensor for %s",
+                    plant["plantName"],
+                )
+                entities.append(
+                    ESolarSensorPlantBatteryDischargeEnergy(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
+                )
+                _LOGGER.debug(
+                    "Setting up ESolarSensorPlantBatterySoC sensor for %s",
+                    plant["plantName"],
+                )
+                entities.append(
+                    ESolarSensorPlantBatterySoC(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
                 )
 
             if use_inverter_sensors:
@@ -212,7 +279,21 @@ async def async_setup_entry(
                     entities.append(
                         ESolarSensorInverterPeakPower( coordinator, plant["plantName"], plant["plantUid"], inverter )
                     )
-
+                    if plant["type"] == 3:
+                        _LOGGER.debug(
+                            "Setting up ESolarInverterBatterySoC sensor for %s and inverter %s",
+                            plant["plantName"],
+                            inverter,
+                        )
+                        entities.append(
+                            ESolarInverterBatterySoC(
+                                coordinator,
+                                plant["plantName"],
+                                plant["plantUid"],
+                                inverter,
+                            )
+                        )
+                        
     async_add_entities(entities, True)
 
 
@@ -1983,5 +2064,432 @@ class ESolarInverterTemperature(ESolarSensor):
                 if 'raw' in kit and 'deviceTemp' in kit['raw'] and  -200 < float(kit["raw"]["deviceTemp"]) < 200:
                     # Setup state
                     value = float(kit["raw"]["deviceTemp"])
+
+        return value
+
+
+
+### Battery entities
+
+class ESolarSensorPlantBatteryBuyEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_buy_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_POWER
+        self._attr_name = f"Plant {self._plant_name} Buy Energy Total"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup static attributes
+                self._attr_available = True
+                self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+                self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+
+                # Setup state
+                if plant["totalBuyEnergy"] is not None:
+                    self._attr_native_value = float(
+                        plant["totalBuyEnergy"]
+                    )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup state
+                if plant["totalBuyEnergy"] is not None:
+                    value = float(plant["totalBuyEnergy"])
+
+        return value
+
+class ESolarSensorPlantBatterySellEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_sell_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_POWER
+        self._attr_name = f"Plant {self._plant_name} Sell Energy Total"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
+
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup static attributes
+                self._attr_available = True
+                self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+                self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+
+                # Setup state
+                if plant["totalSellEnergy"] is not None:
+                    self._attr_native_value = float(
+                        plant["totalSellEnergy"]
+                    )
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup state
+                if plant["totalSellEnergy"] is not None:
+                    value = float(plant["totalSellEnergy"])
+
+        return value
+
+class ESolarSensorPlantBatteryChargeEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_charge_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_POWER
+        self._attr_name = f"Plant {self._plant_name} Charge Energy"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup static attributes
+                self._attr_available = True
+                self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+                self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+
+                # Setup state
+                if plant["totalChargeEnergy"] is not None:
+                    charge = float(plant["totalChargeEnergy"])
+                    self._attr_native_value = charge
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup state
+                if plant["totalChargeEnergy"] is not None:
+                    charge = float(plant["totalChargeEnergy"])
+                    value = charge
+
+        return value
+
+class ESolarSensorPlantBatteryDischargeEnergy(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_discharge_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_icon = ICON_POWER
+        self._attr_name = f"Plant {self._plant_name} Discharge Energy"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup static attributes
+                self._attr_available = True
+                self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+                self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+
+                # Setup state
+                if plant["totalDisChargeEnergy"] is not None:
+                    discharge = float(plant["totalDisChargeEnergy"])
+                    self._attr_native_value = discharge
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                # Setup state
+                if plant["totalDisChargeEnergy"] is not None:
+                    discharge = float(plant["totalDisChargeEnergy"])
+                    value = discharge
+
+        return value
+
+class ESolarSensorPlantBatterySoC(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+
+        self._attr_unique_id = f"plantUid_energy_battery_soc_{plant_uid}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+
+        self._attr_name = f"Plant {self._plant_name} State Of Charge"
+        self._attr_native_unit_of_measurement = PERCENTAGE
+        self._attr_device_class = SensorDeviceClass.BATTERY
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        installed_power = float(0)
+        available_power = float(0)
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            # Setup static attributes
+            self._attr_available = True
+            self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+            self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+
+            # Setup state
+            for inverter in plant["devices"]:
+                if "deviceStatisticsData" not in inverter:
+                    continue
+                installed_power += float(inverter["deviceStatisticsData"]["batCapacity"])
+                available_power += float(
+                        inverter["deviceStatisticsData"]["batCapacity"]
+                        * inverter["deviceStatisticsData"]["batEnergyPercent"]
+                )
+
+            if installed_power > 0:
+                self._attr_native_value = float(available_power / installed_power)
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        value = None
+        installed_power = float(0)
+        available_power = float(0)
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            # Setup state
+            for inverter in plant["devices"]:
+                if "deviceStatisticsData" not in inverter:
+                    continue
+                installed_power += float(inverter["deviceStatisticsData"]["batCapacity"])
+                available_power += float(
+                        inverter["deviceStatisticsData"]["batCapacity"]
+                        * inverter["deviceStatisticsData"]["batEnergyPercent"]
+                )
+
+            if installed_power > 0:
+                value = float(available_power / installed_power)
+
+        return value
+
+class ESolarInverterBatterySoC(ESolarSensor):
+    """Representation of a eSolar sensor for the plant."""
+
+    def __init__(
+        self,
+        coordinator: ESolarCoordinator,
+        plant_name,
+        plant_uid,
+        inverter_sn,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+        self._attr_unique_id = f"Battery_SOC_{inverter_sn}"
+
+        self._device_name = plant_name
+        self._device_model = PLANT_MODEL
+        self.inverter_sn = inverter_sn
+        self._attr_native_value = None
+
+        self._attr_name = f"Inverter {inverter_sn} Battery State Of Charge"
+        self._attr_native_unit_of_measurement = PERCENTAGE
+        self._attr_device_class = SensorDeviceClass.BATTERY
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+        self._attr_extra_state_attributes = {
+            P_NAME: None,
+            P_UID: None,
+            I_MODEL: None,
+            I_SN: None,
+            B_CAPACITY: None,
+            B_CURRENT: None,
+            B_POWER: None,
+            B_DIRECTION: None,
+            G_POWER: None,
+            B_GRID_DIRECT: None,
+            IO_POWER: None,
+            IO_DIRECTION: None,
+            PV_POWER: None,
+            PV_DIRECTION: None,
+            B_T_LOAD: None,
+            B_H_LOAD: None,
+            B_B_LOAD: None,
+            S_POWER: None,
+        }
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            # Setup static attributes
+            self._attr_available = True
+            self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
+            self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
+            if "devices" not in plant or plant["devices"] is None:
+                continue
+            for kit in plant["devices"]:
+                if kit["deviceSn"] == self._inverter_sn:
+                    self._attr_extra_state_attributes[I_MODEL] = kit["deviceType"]
+                    self._attr_extra_state_attributes[I_SN] = kit["deviceSn"]
+                    self._attr_extra_state_attributes[B_CAPACITY] = kit["deviceStatisticsData"]["batCapacity"]
+
+                    # Setup state
+                    if kit["isOnline"] == "1":
+                        self._attr_native_value = kit["deviceStatisticsData"]["batEnergyPercent"]
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        # Setup state
+        value = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            if "devices" not in plant or plant["devices"] is None:
+                continue
+            for kit in plant["devices"]:
+                if kit["deviceSn"] == self._inverter_sn and kit["isOnline"] == "1":
+                    value = float(kit["deviceStatisticsData"]["batEnergyPercent"])
+
+                    # Setup dynamic attributes
+                    self._attr_extra_state_attributes[B_CURRENT] = kit["deviceStatisticsData"]["batCurrent"]
+                    self._attr_extra_state_attributes[B_POWER] = kit["deviceStatisticsData"]["batPower"]
+
+                    if kit["deviceStatisticsData"]["batCurrent"] == 0:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
+                    elif kit["deviceStatisticsData"]["batCurrent"] < 0:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
+                    elif kit["deviceStatisticsData"]["batCurrent"] > 0:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                    else:
+                        self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
+
+                    self._attr_extra_state_attributes[G_POWER] = kit["deviceStatisticsData"]["gridPower"]
+
+                    if kit["deviceStatisticsData"]["gridDirection"] == 1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
+                    elif kit["deviceStatisticsData"]["gridDirection"] == -1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
+                    else:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
+
+                    # self._attr_extra_state_attributes[IO_POWER] = kit["deviceStatisticsData"]["systotalloadwatt"]
+                    #
+                    # if kit["deviceStatisticsData"]["outPutDirection"] == 1:
+                    #     self._attr_extra_state_attributes[IO_DIRECTION] = B_EXPORT
+                    # elif kit["deviceStatisticsData"]["outPutDirection"] == -1:
+                    #     self._attr_extra_state_attributes[IO_DIRECTION] = B_IMPORT
+                    # else:
+                    #     self._attr_extra_state_attributes[IO_DIRECTION] = P_UNKNOWN
+
+                    self._attr_extra_state_attributes[PV_POWER] = kit["deviceStatisticsData"]["powerNow"]
+
+                    # if kit["deviceStatisticsData"]["pvDirection"] == 1:
+                    #     self._attr_extra_state_attributes[PV_DIRECTION] = B_EXPORT
+                    # elif kit["deviceStatisticsData"]["pvDirection"] == -1:
+                    #     self._attr_extra_state_attributes[PV_DIRECTION] = B_IMPORT
+                    # else:
+                    #     self._attr_extra_state_attributes[PV_DIRECTION] = P_UNKNOWN
+
+                    self._attr_extra_state_attributes[B_T_LOAD] = kit["deviceStatisticsData"]["totalLoadPowerwatt"] or None
+                    self._attr_extra_state_attributes[B_H_LOAD] = kit["deviceStatisticsData"]["homeLoadPower"] or None
+                    self._attr_extra_state_attributes[B_B_LOAD] = kit["deviceStatisticsData"]['loadPO']["backupTotalLoadPowerWatt"] or None
+                    self._attr_extra_state_attributes[S_POWER] = kit["solarPower"] or None
 
         return value

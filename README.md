@@ -1,5 +1,5 @@
 # Home Assistant SAJ eSolar _Elekeeper_ Custom Integration
-### V2.0.8
+### V2.0.9
 
 ![elekeeper](https://github.com/erelke/ha-esolar/blob/main/images/elekeeper.png)
 
