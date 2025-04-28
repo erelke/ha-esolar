@@ -16,6 +16,22 @@
         },
         "description": "Válaszd ki a megjelenítendő rendszereket",
         "title":"SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Felhasználónév",
+          "password": "Jeszó",
+          "region": "Kérlek, válaszd ki a régiót, amelyben a napelemes rendszered található."
+        },
+        "description": "Kérlek add meg a SAJ eSolar felhasználóneved és jelszavad!",
+        "title":"SAJ eSolar"
+      },
+      "reconfigure_sites":{
+        "data":{
+          "monitored_sites": "Rendszereket"
+        },
+        "description": "Válaszd ki a megjelenítendő rendszereket",
+        "title":"SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Nincs kiválasztott rendszer"
     },
     "abort": {
-      "already_configured": "Már beállítva"
+      "already_configured": "Már beállítva",
+      "reconfigure_successful": "Sikeresen újra beállítva"
     }
   },
   "selector": {

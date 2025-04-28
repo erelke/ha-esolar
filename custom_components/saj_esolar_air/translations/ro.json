@@ -16,6 +16,22 @@
         },
         "description": "Selectați locațiile de monitorizat",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Nume de utilizator",
+          "password": "Parolă",
+          "region": "Selectați regiunea în care se află sistemul dvs. de energie solară."
+        },
+        "description": "Introduceți numele de utilizator și parola contului dvs. SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Locații"
+        },
+        "description": "Selectați locațiile de monitorizat",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Nu au fost selectate locații de monitorizat"
     },
     "abort": {
-      "already_configured": "Deja configurat"
+      "already_configured": "Deja configurat",
+      "reconfigure_successful": "Reconfigurat cu succes"
     }
   },
   "selector": {

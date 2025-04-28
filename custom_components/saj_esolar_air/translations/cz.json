@@ -16,6 +16,22 @@
         },
         "description": "Vyberte lokality k monitorování",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Uživatelské jméno",
+          "password": "Heslo",
+          "region": "Vyberte region, ve kterém se nachází váš solární energetický systém."
+        },
+        "description": "Zadejte uživatelské jméno a heslo ke svému účtu SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Lokality"
+        },
+        "description": "Vyberte lokality k monitorování",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Nebyla vybrána žádná sledovaná lokalita"
     },
     "abort": {
-      "already_configured": "Již nakonfigurováno"
+      "already_configured": "Již nakonfigurováno",
+      "reconfigure_successful": "Úspěšně znovu nakonfigurováno"
     }
   },
   "selector": {

@@ -16,6 +16,22 @@
         },
         "description": "选择要监控的站点",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "用户名",
+          "password": "密码",
+          "region": "请选择您的太阳能系统所在的地区。"
+        },
+        "description": "请输入您的 SAJ eSolar 账户的用户名和密码",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "站点"
+        },
+        "description": "选择要监控的站点",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "未选择任何监控站点"
     },
     "abort": {
-      "already_configured": "已配置"
+      "already_configured": "已配置",
+      "reconfigure_successful": "成功重新设置"
     }
   },
   "selector": {

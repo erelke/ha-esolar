@@ -16,6 +16,22 @@
         },
         "description": "Виберіть об’єкти для моніторингу",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Ім'я користувача",
+          "password": "Пароль",
+          "region": "Будь ласка, виберіть регіон, у якому знаходиться ваша сонячна енергосистема."
+        },
+        "description": "Будь ласка, введіть ім'я користувача та пароль для вашого облікового запису SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Об’єкти"
+        },
+        "description": "Виберіть об’єкти для моніторингу",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Не вибрано жодного об’єкта для моніторингу"
     },
     "abort": {
-      "already_configured": "Вже налаштовано"
+      "already_configured": "Вже налаштовано",
+      "reconfigure_successful": "Успішно переналаштовано"
     }
   },
   "selector": {

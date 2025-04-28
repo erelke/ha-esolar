@@ -5,7 +5,7 @@
         "data": {
           "username": "[%key:common::config_flow::data::username%]",
           "password": "[%key:common::config_flow::data::password%]",
-          "region": "Please select nodes - Please select the region corresponding to your business scope. The system will access the data and services specific to the selected region. Due to different laws and regulations, data may not be shared between regions. Please choose carefully.",
+          "region": "Please select nodes - Please select the region corresponding to your business scope. The system will access the data and services specific to the selected region. Due to different laws and regulations, data may not be shared between regions. Please choose carefully."
         },
         "description": "Please enter the username and password for your SAJ eSolar account",
         "title": "SAJ eSolar"
@@ -15,7 +15,23 @@
           "monitored_sites": "Sites"
         },
         "description": "Select sites to monitor",
-        "title": "SAJ eSolar"
+        "title": "[%key::config::step::user::title%]"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "[%key:common::config_flow::data::username%]",
+          "password": "[%key:common::config_flow::data::password%]",
+          "region": "[%key::component::saj_esolar_air::config::step::user::data::region%]"
+        },
+        "description": "[%key::component::saj_esolar_air::config::step::user::description%]",
+        "title": "[%key::component::saj_esolar_air::config::step::user::title%]"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Sites"
+        },
+        "description": "Select sites to monitor",
+        "title": "[%key::config::step::user::title%]"
       }
     },
     "error": {
@@ -25,8 +41,10 @@
       "no_sites": "No monitored sites selected"
     },
     "abort": {
-      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]"
-    }
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
+    },
+    "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
   },
   "selector": {
     "region": {
@@ -46,8 +64,9 @@
           "plant_update_interval": "Plant update interval (minutes)"
         },
         "description": "Select options",
-        "title": "SAJ eSolar"
+        "title": "[%key::component::saj_esolar_air::config::step::user::title%]"
       }
-    }
+    },
+    "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
   }
 }

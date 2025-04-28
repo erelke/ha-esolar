@@ -16,6 +16,22 @@
         },
         "description": "Välj siter att monitorera",
         "title":"SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Användarnamn",
+          "password": "Lösenord",
+          "region": "Vänligen välj den region där ditt solenergisystem är beläget"
+        },
+        "description": "Ange namn och lösen till ditt SAJ eSolar konto",
+        "title":"SAJ eSolar"
+      },
+      "reconfigure_sites":{
+        "data":{
+          "monitored_sites": "Siter"
+        },
+        "description": "Välj siter att monitorera",
+        "title":"SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Inga monitorerade siter valda"
     },
     "abort": {
-      "already_configured": "Redan konfigurerad"
+      "already_configured": "Redan konfigurerad",
+      "reconfigure_successful": "Framgångsrikt ominstallerad"
     }
   },
   "selector": {

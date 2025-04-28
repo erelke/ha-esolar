@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from email.policy import default
 from typing import Any
 
 import requests
@@ -168,6 +169,79 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 }
             ),
             errors=errors,
+        )
+    async def async_step_reconfigure_sites(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle the second step. Select which sites to use."""
+
+        errors = {}
+        if user_input is not None:
+            if len(user_input[CONF_MONITORED_SITES]) > 0:
+                user_input.update({CONF_INVERTER_SENSORS: self._get_reconfigure_entry().options.get(CONF_INVERTER_SENSORS)})
+                user_input.update({CONF_PV_GRID_DATA: self._get_reconfigure_entry().options.get(CONF_PV_GRID_DATA)})
+                user_input.update({CONF_PLANT_UPDATE_INTERVAL: self._get_reconfigure_entry().options.get(CONF_PLANT_UPDATE_INTERVAL)})
+                print (self.data)
+                return self.async_update_reload_and_abort(
+                    self._get_reconfigure_entry(),
+                    data=self.data,
+                    options=user_input,
+                    reload_even_if_entry_is_unchanged=False
+                )
+
+            errors["base"] = "no_sites"
+
+        return self.async_show_form(
+            step_id="reconfigure_sites",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(
+                        CONF_MONITORED_SITES, default=self.sites
+                    ): cv.multi_select(self.sites),
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_reconfigure(
+            self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reconfiguration step."""
+        errors = {}
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reconfigure", data_schema=STEP_USER_DATA_SCHEMA
+            )
+
+        self.data = user_input
+        try:
+            info = await validate_input(self.hass, self.data)
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except Exception:
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            self.sites = [site["plantName"] for site in info["plant_list"]]
+            if len(self.sites) == 1:
+                return self.async_update_reload_and_abort(
+                    self._get_reconfigure_entry(),
+                    data=self.data,
+                    options={
+                        CONF_MONITORED_SITES: self.sites,
+                        CONF_INVERTER_SENSORS: self._get_reconfigure_entry().options.get(CONF_INVERTER_SENSORS),
+                        CONF_PV_GRID_DATA: self._get_reconfigure_entry().options.get(CONF_PV_GRID_DATA),
+                        CONF_PLANT_UPDATE_INTERVAL: self._get_reconfigure_entry().options.get(CONF_PLANT_UPDATE_INTERVAL),
+                    },
+                    reload_even_if_entry_is_unchanged=False,
+                )
+            return await self.async_step_reconfigure_sites()
+
+        return self.async_show_form(
+            step_id="reconfigure", data_schema=STEP_USER_DATA_SCHEMA, errors=errors
         )
 
     @staticmethod

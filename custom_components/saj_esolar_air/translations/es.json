@@ -16,6 +16,21 @@
         },
         "description": "Seleccione los sitios a monitorear",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+          "username": "Nombre de usuario",
+          "password": "Contraseña",
+          "region": "Seleccione la región donde se encuentra su sistema de energía solar."
+        },
+        "description": "Ingrese el nombre de usuario y la contraseña de su cuenta SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Sitios"
+        },
+        "description": "Seleccione los sitios a monitorear",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +40,8 @@
       "no_sites": "No se ha seleccionado ningún sitio monitoreado"
     },
     "abort": {
-      "already_configured": "Ya configurado"
+      "already_configured": "Ya configurado",
+      "reconfigure_successful": "Reconfigurado con éxito"
     }
   },
   "selector": {

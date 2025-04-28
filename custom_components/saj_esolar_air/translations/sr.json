@@ -16,6 +16,22 @@
         },
         "description": "Изаберите локације за праћење",
         "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Корисничко име",
+          "password": "Лозинка",
+          "region": "Молимо вас да изаберете регион у којем се налази ваш соларни систем."
+        },
+        "description": "Унесите корисничко име и лозинку за ваш SAJ eSolar налог",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Локације"
+        },
+        "description": "Изаберите локације за праћење",
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -25,7 +41,8 @@
       "no_sites": "Нису изабране локације за праћење"
     },
     "abort": {
-      "already_configured": "Већ је конфигурисано"
+      "already_configured": "Већ је конфигурисано",
+      "reconfigure_successful": "Успешно поново подешено"
     }
   },
   "selector": {
