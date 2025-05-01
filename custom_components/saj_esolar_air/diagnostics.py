@@ -37,6 +37,10 @@ def _async_get_diagnostics(
 
     config = entry.as_dict()
     config['data'][CONF_PASSWORD] = REDACTED
+
+    if 'plant_info' in config['data']:
+        del config['data']['plant_info']
+
     data = {
         "name": entry.title,
         "entry": config,

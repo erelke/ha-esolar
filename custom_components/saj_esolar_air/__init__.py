@@ -32,7 +32,32 @@ async def update_listener(hass, entry):
     _LOGGER.debug(entry.options)
 
 
+async def async_migrate_entry(hass, entry):
+    """Migrálja a régi konfigurációs bejegyzést az új verzióra."""
+
+    _LOGGER.debug(
+        f"Checking migration. Version {entry.version}"
+    )
+
+    if entry.version == 1:
+        new_fields = {
+            CONF_REGION: "eu",
+            CONF_PLANT_UPDATE_INTERVAL: 10
+        }
+        new_data = {**entry.data, **new_fields}  # Új mezők hozzáadása
+        hass.config_entries.async_update_entry(entry, data=new_data, version=2)
+    return True
+
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+    """Beállítja az integrációt a konfigurációs bejegyzés alapján."""
+    if not await async_migrate_entry(hass, entry):
+        _LOGGER.debug(
+            f"Migration failed"
+        )
+        return False  # Sikertelen migráció esetén ne folytassa
+
+    # hass.data[DOMAIN] = entry.data
+
     """Set up eSolar from a config entry."""
     coordinator = ESolarCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
@@ -45,14 +70,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
-    domain_data = hass.data.get(DOMAIN)
-    if domain_data:
-        await hass.config_entries.async_forward_entry_unload(entry, "sensor")
+    if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
+        hass.data[DOMAIN].pop(entry.entry_id)
 
-    # Töröljük az adatokat a `hass.data`-ból
-    hass.data.pop(DOMAIN, None)
-
-    return True
+    return unload_ok
 
 
 class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):

@@ -181,7 +181,11 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 user_input.update({CONF_INVERTER_SENSORS: self._get_reconfigure_entry().options.get(CONF_INVERTER_SENSORS)})
                 user_input.update({CONF_PV_GRID_DATA: self._get_reconfigure_entry().options.get(CONF_PV_GRID_DATA)})
                 user_input.update({CONF_PLANT_UPDATE_INTERVAL: self._get_reconfigure_entry().options.get(CONF_PLANT_UPDATE_INTERVAL)})
-                print (self.data)
+
+                _LOGGER.debug(
+                    f"Reconfigure: Store data in hass. {self.data}"
+                )
+
                 return self.async_update_reload_and_abort(
                     self._get_reconfigure_entry(),
                     data=self.data,
