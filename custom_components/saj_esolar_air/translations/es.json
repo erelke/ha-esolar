@@ -18,6 +18,7 @@
         "title": "SAJ eSolar"
       },
       "reconfigure": {
+        "data": {
           "username": "Nombre de usuario",
           "password": "Contraseña",
           "region": "Seleccione la región donde se encuentra su sistema de energía solar."

@@ -12,6 +12,7 @@ import binascii
 import json
 import requests
 import urllib.parse
+from dateutil.relativedelta import relativedelta
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -19,6 +20,7 @@ WEB_TIMEOUT = 30
 AUTHORIZATION_TOKEN = None
 AUTHORIZATION_EXPIRES = None
 END_USER_PLANT_LIST = None
+WEB_PLANT_DATA = None
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
@@ -72,17 +74,31 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
         return get_esolar_data_static_h1_r5(
             region, username, password, plant_list, use_pv_grid_attributes
         )
+    global WEB_PLANT_DATA
 
     try:
-        plant_info = None
         session = esolar_web_autenticate(region, username, password)
-        plant_info = web_get_plant(region, session, plant_list)
+        if WEB_PLANT_DATA is None:
+            _LOGGER.debug(
+                f"We don't have plant_data, requesting"
+            )
+            plant_info = web_get_plant(region, session, plant_list)
+            WEB_PLANT_DATA = plant_info
+        else:
+            _LOGGER.debug(
+                f"We have plant data, using cached data"
+            )
+            plant_info = WEB_PLANT_DATA
+
         web_get_plant_details(region, session, plant_info)
         web_get_plant_statistics(region, session, plant_info)
+        web_get_plant_overview(region, session, plant_info)
+        web_get_plant_flow_data(region, session, plant_info)
         web_get_device_info(region, session, plant_info)
-        web_get_device_rawData(region, session, plant_info)
+        web_get_device_raw_data(region, session, plant_info)
 
         plant_info['status'] = 'success'
+        plant_info['stamp'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -172,16 +188,16 @@ def dict_to_sorted_string(data):
     result_string = "&".join(f"{k}={v}" for k, v in sorted_items)  # Összefűzés
     return result_string
 
-def calc_signature(dict):
-    keys = dict.keys()
+def calc_signature(_dict):
+    keys = _dict.keys()
     keys_str = ','.join(keys)
-    string = dict_to_sorted_string(dict)+"&key=ktoKRLgQPjvNyUZO8lVc9kU1Bsip6XIe" #esolar app.js
+    string = dict_to_sorted_string(_dict)+"&key=ktoKRLgQPjvNyUZO8lVc9kU1Bsip6XIe" #esolar app.js
     h = hashlib.md5(string.encode('latin-1')).hexdigest()
     signature = sign(h).upper()
 
-    dict['signature'] = signature
-    dict['signParams'] = keys_str
-    return dict
+    _dict['signature'] = signature
+    _dict['signParams'] = keys_str
+    return _dict
 
 def pad_pkcs7(data, block_size=16):
     """PKCS7 padding hozzáadása, hogy kompatibilis legyen a JavaScript verzióval."""
@@ -214,21 +230,30 @@ def esolar_web_autenticate(region, username, password):
 
     try:
         session = requests.Session()
-        if AUTHORIZATION_TOKEN is not None and AUTHORIZATION_EXPIRES is not None and AUTHORIZATION_EXPIRES < time.time():
+
+        if (AUTHORIZATION_TOKEN is not None
+                and isinstance(AUTHORIZATION_TOKEN, str)
+                and len(AUTHORIZATION_TOKEN) > 0
+                and AUTHORIZATION_EXPIRES is not None
+                and isinstance(AUTHORIZATION_EXPIRES, int)
+                and AUTHORIZATION_EXPIRES > int(time.time())):
+            dt = datetime.datetime.fromtimestamp(AUTHORIZATION_EXPIRES).strftime("%Y-%m-%d %H:%M:%S")
             _LOGGER.debug(
-                f"Using cached token, expires in {AUTHORIZATION_EXPIRES - time.time()} seconds"
+                f"Using cached token, expires at {dt}"
             )
             session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
             return session
 
-        random = generatkey(32)
+        _LOGGER.debug(
+            f"We don't have a valid token, authenticating..."
+        )
 
-        sign = {
+        data_to_sign = {
             "appProjectName": "elekeeper",
             "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
             "lang": "en",
             "timeStamp": int(time.time()*1000),
-            "random": random,
+            "random": generatkey(32),
             "clientId": "esolar-monitor-admin"
         }
 
@@ -238,7 +263,7 @@ def esolar_web_autenticate(region, username, password):
             "rememberMe": "false",
             "loginType": 1,
         })
-        signed = calc_signature(sign)
+        signed = calc_signature(data_to_sign)
         data = signed | login_data
         response = (
             session.post(
@@ -259,15 +284,14 @@ def esolar_web_autenticate(region, username, password):
             _LOGGER.error(f"Login failed, returned {answer['errMsg']}")
             raise ValueError('Error message in answer: ' + answer['errMsg'])
         else:
-            if "data" in answer and "token" in answer['data']:
-                if 'expiresIn' in answer['data']:
-                    expires_in = int(answer['data']['expiresIn'])
-                    expires_at = int(time.time() - (expires_in/1000))-10
-                    AUTHORIZATION_EXPIRES = expires_at
+            if "data" in answer and "token" in answer['data'] and 'expiresIn' in answer['data']:
+                expires_in = int(answer['data']['expiresIn']) #sec, nem ms
+                expires_at = int(time.time() + expires_in)-9 #3nap-10s
+                AUTHORIZATION_EXPIRES = expires_at
                 AUTHORIZATION_TOKEN =  answer['data']['tokenHead'] + answer['data']['token']
                 session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
                 _LOGGER.debug(
-                    f"Using new token, expires in {expires_at - time.time()} seconds ",
+                    f"Using new token, expires in {int(expires_at - time.time())} seconds",
                 )
                 return session
             else:
@@ -470,7 +494,7 @@ def web_get_device_info(region, session, plant_info):
         raise requests.exceptions.RequestException(errr)
 
 
-def web_get_device_rawData(region, session, plant_info):
+def web_get_device_raw_data(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
@@ -515,6 +539,106 @@ def web_get_device_rawData(region, session, plant_info):
                     device.update({"raw": raw["data"]["list"][0]})
                 else:
                     device.update({"raw": {}})
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_plant_overview(region, session, plant_info):
+    """Retrieve plant overview from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obain plants")
+
+    try:
+        current_timestamp_sec = time.time()
+
+        one_month_later = datetime.datetime.fromtimestamp(current_timestamp_sec) + relativedelta(months=1)
+        timestamp_one_month_later_ms = int(one_month_later.timestamp() * 1000)
+
+        for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                "refresh": timestamp_one_month_later_ms,
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                base_url(region) + "/monitor/home/getPlantGridOverviewInfo",
+                params = signed,
+                timeout=WEB_TIMEOUT
+            )
+
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get plant {plant["plantName"]} overview data error: {response.status_code}")
+
+            overview = response.json()
+            if 'data' in overview:
+                plant.update(overview["data"])
+            else:
+                _LOGGER.debug(
+                    "Nincs data az overview-ban!?",
+                )
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_plant_flow_data(region, session, plant_info):
+    """Retrieve plant flow data from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obain plants")
+
+    try:
+        for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                base_url(region) + "/monitor/home/getDeviceEneryFlowData",
+                params = signed,
+                timeout=WEB_TIMEOUT
+            )
+
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get plant {plant["plantName"]} energy flow data error: {response.status_code}")
+
+            flow = response.json()
+            if 'data' in flow:
+                plant.update(flow["data"])
+            else:
+                _LOGGER.debug(
+                    "Nincs data a flow-ban!?",
+                )
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)

@@ -5,7 +5,6 @@ from collections.abc import Mapping
 from datetime import timedelta
 import logging
 from typing import Any, TypedDict, cast
-
 import requests
 
 from homeassistant.config_entries import ConfigEntry
@@ -71,7 +70,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
-        hass.data[DOMAIN].pop(entry.entry_id)
+        domain_data = dict(hass.data[DOMAIN])  # Másolat készítése
+        domain_data.pop(entry.entry_id, None)  # Biztonságos törlés
+        hass.data[DOMAIN] = domain_data  # Frissített adat visszaírása
 
     return unload_ok
 
@@ -87,11 +88,8 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             _LOGGER,
             name=DOMAIN,
             update_interval=update_interval,
-            # update_interval=timedelta(seconds=20),
         )
         self._entry = entry
-        self.temp = 3
-
 
     @property
     def entry_id(self) -> str:
