@@ -131,3 +131,7 @@ P_OWNER_EMAIL = 'Owner email'
 P_NO = 'Plant No.'
 P_ID = 'Plant ID'
 P_TODAY_ALARM_NUM = 'Plant today alarm number'
+
+P_GRID_AC1 = 'AC1'
+P_GRID_AC2 = 'AC2'
+P_GRID_AC3 = 'AC3'

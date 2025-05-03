@@ -46,7 +46,7 @@ def _async_get_diagnostics(
     if entry.runtime_data is not None:
         sensitive_keys = ["latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
                           "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail",
-                          "email", "plantId", "plantNo", "officeId", "reportId"]
+                          "email", "plantId", "plantNo", "officeId", "reportId", "aliases"]
         runtime_data = anonymize_data(entry.runtime_data, sensitive_keys)
 
     data = {
@@ -63,7 +63,10 @@ def anonymize_data(data, sensitive_keys):
 
     if isinstance(data, dict):  # Ha szótár, akkor nézzük meg az elemeket
         return {
-            key: anonymize_data(REDACTED if key in sensitive_keys else value, sensitive_keys)
+            key: anonymize_data(value, sensitive_keys) if key not in sensitive_keys else (
+                {k: REDACTED for k in value} if isinstance(value, dict) else
+                [REDACTED for _ in value] if isinstance(value, list) else REDACTED
+            )
             for key, value in data.items()
         }
 

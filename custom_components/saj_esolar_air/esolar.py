@@ -451,7 +451,7 @@ def web_get_plant_statistics(region, session, plant_info):
 
 
 def web_get_device_info(region, session, plant_info):
-    """Retrieve platUid from the WEB Portal using web_authenticate."""
+    """Retrieve device info from the WEB Portal."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
 
