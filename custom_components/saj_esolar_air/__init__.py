@@ -55,13 +55,13 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         )
         return False  # Sikertelen migráció esetén ne folytassa
 
-    # hass.data[DOMAIN] = entry.data
-
     """Set up eSolar from a config entry."""
     coordinator = ESolarCoordinator(hass, entry)
     await coordinator.async_config_entry_first_refresh()
 
-    hass.data.setdefault(DOMAIN, {})[entry.entry_id] = coordinator
+    hass.data.setdefault(DOMAIN, {})
+    hass.data[DOMAIN][entry.entry_id] = coordinator
+
     entry.async_on_unload(entry.add_update_listener(update_listener))
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
@@ -90,6 +90,7 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             update_interval=update_interval,
         )
         self._entry = entry
+        self._data = {}
 
     @property
     def entry_id(self) -> str:
@@ -102,6 +103,7 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             data = await self.hass.async_add_executor_job(
                 get_data, self.hass, self._entry.data, self._entry.options
             )
+            self._data.update({self._entry.entry_id: data})
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed from err
         except ESolarError as err:
@@ -109,6 +111,13 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
 
         return data
 
+    def get_data(self, entry_id) -> dict[Any, Any]:
+        """Get data from the coordinator."""
+        if entry_id in self._data:
+            return self._data[entry_id]
+        else:
+            print(entry_id)
+            return {}
 
 class ESolarError(HomeAssistantError):
     """Base error."""

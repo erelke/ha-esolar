@@ -12,6 +12,8 @@ from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
+from custom_components.saj_esolar_air import DOMAIN
+
 
 async def async_get_config_entry_diagnostics(
     hass: HomeAssistant, entry: ConfigEntry
@@ -42,12 +44,14 @@ def _async_get_diagnostics(
     if 'plant_info' in config['data']:
         del config['data']['plant_info']
 
-    runtime_data = []
-    if entry.runtime_data is not None:
-        sensitive_keys = ["latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
-                          "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail",
-                          "email", "plantId", "plantNo", "officeId", "reportId", "aliases"]
-        runtime_data = anonymize_data(entry.runtime_data, sensitive_keys)
+    coordinator = hass.data[DOMAIN][entry.entry_id]
+
+    runtime_data = coordinator.get_data(entry.entry_id)
+
+    sensitive_keys = ["latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
+                      "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail",
+                      "email", "plantId", "plantNo", "officeId", "reportId", "aliases"]
+    runtime_data = anonymize_data( runtime_data, sensitive_keys)
 
     data = {
         "name": entry.title,

@@ -24,10 +24,12 @@ WEB_PLANT_DATA = None
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
+
 if BASIC_TEST:
     from .esolar_static_test import (
         get_esolar_data_static_h1_r5,
         web_get_plant_static_h1_r5,
+        get_esolar_data_static_file
     )
 
 
@@ -71,9 +73,8 @@ def dump(region, username, password):
 def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_attributes=True):
     """SAJ eSolar Data Update."""
     if BASIC_TEST:
-        return get_esolar_data_static_h1_r5(
-            region, username, password, plant_list, use_pv_grid_attributes
-        )
+        return get_esolar_data_static_file("saj_esolar_air_dusnake_2", plant_list)
+
     global WEB_PLANT_DATA
 
     try:
@@ -91,11 +92,18 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
             plant_info = WEB_PLANT_DATA
 
         web_get_plant_details(region, session, plant_info)
+        web_get_device_list(region, session, plant_info)
         web_get_plant_statistics(region, session, plant_info)
         web_get_plant_overview(region, session, plant_info)
-        web_get_plant_flow_data(region, session, plant_info)
         web_get_device_info(region, session, plant_info)
+        web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
+
+        for plant in plant_info["plantList"]:
+            for device in plant["devices"]:
+                if "hasBattery" in device and device["hasBattery"] == 1:
+                    plant["hasBattery"] = 1
+
 
         plant_info['status'] = 'success'
         plant_info['stamp'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -414,6 +422,7 @@ def web_get_plant_statistics(region, session, plant_info):
 
     try:
          for plant in plant_info["plantList"]:
+
             data = {
                 "plantUid": plant["plantUid"],
                 'appProjectName': 'elekeeper',
@@ -423,6 +432,12 @@ def web_get_plant_statistics(region, session, plant_info):
                 'random': generatkey(32),
                 'clientId': 'esolar-monitor-admin',
             }
+
+            if len(plant["deviceSnList"]) > 1:
+                for device in plant["devices"]:
+                    if "isMasterFlag" in device and device["isMasterFlag"] == 1:
+                        data["deviceSn"] = device["deviceSn"]
+                        break
 
             signed = calc_signature(data)
 
@@ -438,6 +453,8 @@ def web_get_plant_statistics(region, session, plant_info):
                 raise ValueError(f"Get plant statistics data error: {response.status_code}")
 
             plant_statistics = response.json()
+            if 'data' in plant_statistics and 'deviceSnList' in plant_statistics['data']:
+                del plant_statistics['data']['deviceSnList']
             plant.update(plant_statistics["data"])
 
     except requests.exceptions.HTTPError as errh:
@@ -449,6 +466,62 @@ def web_get_plant_statistics(region, session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
+def web_get_device_list(region, session, plant_info):
+    """Retrieve a device list from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obain plants")
+
+    try:
+        for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                "pageSize": 100,
+                "pageNo": 1,
+                "searchOfficeIdArr":"1",
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                base_url(region) + "/monitor/device/getDeviceList",
+                params = signed,
+                timeout=WEB_TIMEOUT
+            )
+
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get device {plant['plantName']} deviceList error: {response.status_code}")
+
+            answer = response.json()
+            if 'data' in answer and 'list' in answer['data']:
+                device_list = answer["data"]["list"]
+            else:
+                return
+
+            if "deviceSnList" not in plant:
+                plant["deviceSnList"] = []
+
+            for device in device_list:
+                if "deviceSn" in device and device["deviceSn"] not in plant["deviceSnList"]:
+                    plant["deviceSnList"].append(device["deviceSn"])
+
+            plant.update({"devices": device_list})
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
 
 def web_get_device_info(region, session, plant_info):
     """Retrieve device info from the WEB Portal."""
@@ -497,7 +570,7 @@ def web_get_device_info(region, session, plant_info):
 def web_get_device_raw_data(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plants raw data")
 
     try:
         for plant in plant_info["plantList"]:
@@ -589,7 +662,7 @@ def web_get_plant_overview(region, session, plant_info):
             if 'data' in overview:
                 plant.update(overview["data"])
             else:
-                _LOGGER.debug(
+                _LOGGER.warning(
                     "Nincs data az overview-ban!?",
                 )
 
@@ -605,7 +678,7 @@ def web_get_plant_overview(region, session, plant_info):
 def web_get_plant_flow_data(region, session, plant_info):
     """Retrieve plant flow data from the WEB Portal."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plants")
 
     try:
         for plant in plant_info["plantList"]:
@@ -622,7 +695,7 @@ def web_get_plant_flow_data(region, session, plant_info):
             signed = calc_signature(data)
 
             response = session.get(
-                base_url(region) + "/monitor/home/getDeviceEneryFlowData",
+                base_url(region) + "/monitor/home/getDeviceEneryFlowData",  #typo from SAJ
                 params = signed,
                 timeout=WEB_TIMEOUT
             )
@@ -636,8 +709,8 @@ def web_get_plant_flow_data(region, session, plant_info):
             if 'data' in flow:
                 plant.update(flow["data"])
             else:
-                _LOGGER.debug(
-                    "Nincs data a flow-ban!?",
+                _LOGGER.warning(
+                    "Nincs data a flow-ban!? {flow}",
                 )
 
     except requests.exceptions.HTTPError as errh:

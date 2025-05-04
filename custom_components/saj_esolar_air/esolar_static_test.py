@@ -1,5 +1,6 @@
 """ESolar Basic Test Data."""
-
+import json
+import os
 
 def web_get_plant_static_h1_r5():
     """SAJ eSolar Data Update - STATIC PLANT H1 + R5."""
@@ -69,7 +70,6 @@ def web_get_plant_static_h1_r5():
         "status": "success",
     }
     return plant_info
-
 
 def get_esolar_data_static_h1_r5(
     region, username, password, plant_list, use_pv_grid_attributes
@@ -802,3 +802,42 @@ def get_esolar_data_static_h1_r5(
         "status": "success",
     }
     return plant_info
+
+def get_esolar_data_static_file(file_name='config_entry-joker', plant_list = None):
+    base_dir = os.path.dirname(os.path.abspath(__file__))  # Az aktuális fájl elérési útvonala
+    file_path = os.path.join(base_dir, "data", f"{file_name}.json")
+    plantName = get_first_string_element(plant_list)
+
+    try:
+        with open(file_path, "r", encoding="utf-8") as file:
+            data = json.load(file)
+
+        # Ellenőrizzük, hogy a szükséges kulcsok léteznek-e
+        if "data" in data and "runtime_data" in data["data"] and "plantList" in data["data"]["runtime_data"]:
+            if plantName != None:
+                data["data"]["runtime_data"]["plantList"][0]['plantName'] = plantName
+            return data["data"]["runtime_data"]
+
+        else:
+            print(f"Hiba: A JSON fájl szerkezete nem megfelelő. Hiányzó kulcsok: 'data' vagy 'runtime_data'.")
+            return None
+
+    except FileNotFoundError:
+        print(f"Hiba: A fájl '{file_path}' nem található.")
+        print(f"Az aktuális futtatási könyvtár: {os.getcwd()}")
+        print(f"Az aktuális könyvtár: {base_dir}")
+        return None
+    except json.JSONDecodeError:
+        print(f"Hiba: A fájl '{file_path}' nem érvényes JSON.")
+        return None
+
+def get_first_string_element(value):
+    if isinstance(value, list):  # Ha lista
+        for elem in value:
+            if isinstance(elem, str):
+                return elem
+        return None  # Ha nincs benne string
+    elif isinstance(value, str):  # Ha string
+        return value
+    else:
+        return None  # Ha egyik sem
