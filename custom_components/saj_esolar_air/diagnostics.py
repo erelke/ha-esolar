@@ -46,7 +46,7 @@ def _async_get_diagnostics(
 
     coordinator = hass.data[DOMAIN][entry.entry_id]
 
-    runtime_data = coordinator.get_data(entry.entry_id)
+    runtime_data = coordinator.data
 
     sensitive_keys = ["latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
                       "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail",

@@ -90,7 +90,6 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             update_interval=update_interval,
         )
         self._entry = entry
-        self._data = {}
 
     @property
     def entry_id(self) -> str:
@@ -103,21 +102,12 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             data = await self.hass.async_add_executor_job(
                 get_data, self.hass, self._entry.data, self._entry.options
             )
-            self._data.update({self._entry.entry_id: data})
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed from err
         except ESolarError as err:
             raise UpdateFailed(str(err)) from err
 
         return data
-
-    def get_data(self, entry_id) -> dict[Any, Any]:
-        """Get data from the coordinator."""
-        if entry_id in self._data:
-            return self._data[entry_id]
-        else:
-            print(entry_id)
-            return {}
 
 class ESolarError(HomeAssistantError):
     """Base error."""
