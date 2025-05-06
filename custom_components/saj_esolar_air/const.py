@@ -36,7 +36,7 @@ P_PEAK_POWER = "Plant Peak Power"
 
 # Inverter Sensor Attributes
 I_MODEL = "Inverter Model"
-I_SN = "Inverter S/N"
+I_SN = "Inverter SN"
 I_PC = "Inverter PC"
 I_TYPE = "Inverter Type"
 I_DB = "Inverter Display Board"
@@ -135,3 +135,13 @@ P_TODAY_ALARM_NUM = 'Plant today alarm number'
 P_GRID_AC1 = 'AC1'
 P_GRID_AC2 = 'AC2'
 P_GRID_AC3 = 'AC3'
+
+I_TODAY = 'Today income'
+I_YESTERDAY = 'Yesterday income'
+I_MONTH = 'Month income'
+I_LAST_MONTH = 'Last month income'
+I_YEAR = 'Year income'
+I_TOTAL = 'Total income'
+
+EH_TODAY = 'Today equivalent hours'
+EH_TOTAL = 'Total equivalent hours'

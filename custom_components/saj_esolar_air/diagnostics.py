@@ -49,7 +49,7 @@ def _async_get_diagnostics(
     runtime_data = coordinator.data
 
     sensitive_keys = ["latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
-                      "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail",
+                      "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail", "moduleSnList",
                       "email", "plantId", "plantNo", "officeId", "reportId", "aliases"]
     runtime_data = anonymize_data( runtime_data, sensitive_keys)
 

@@ -10,6 +10,8 @@ from Crypto.Random import get_random_bytes
 import hashlib
 import binascii
 import json
+import hashlib
+import os
 import requests
 import urllib.parse
 from dateutil.relativedelta import relativedelta
@@ -17,8 +19,6 @@ from dateutil.relativedelta import relativedelta
 _LOGGER = logging.getLogger(__name__)
 
 WEB_TIMEOUT = 30
-AUTHORIZATION_TOKEN = None
-AUTHORIZATION_EXPIRES = None
 END_USER_PLANT_LIST = None
 WEB_PLANT_DATA = None
 
@@ -98,6 +98,7 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
         web_get_device_info(region, session, plant_info)
         web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
+        # print(plant_info["plantList"][0]["yearPvEnergy"] if "yearPvEnergy" in plant_info["plantList"][0] else "No yearPvEnergy")
 
         for plant in plant_info["plantList"]:
             for device in plant["devices"]:
@@ -228,28 +229,89 @@ def generatkey(length):
     chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
     return ''.join(random.choice(chars) for _ in range(length))
 
+def store_user_data(username: str, password: str, token: str, expires: int, filename="user_data.json"):
+    """Felhasználói adatokat tárol és frissít egy JSON fájlban, jelszó hash-eléssel."""
+    file_path = os.path.join(os.path.dirname(__file__), filename)
+
+    # Jelszó hash-elése
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    # Betöltjük az aktuális adatokat, ha a fájl létezik
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as file:
+            try:
+                user_data = json.load(file)
+            except json.JSONDecodeError:
+                user_data = {}  # Ha a fájl üres vagy hibás, létrehozzuk az üres adatstruktúrát
+    else:
+        user_data = {}
+
+    # Frissítés vagy új bejegyzés létrehozása
+    user_data[username] = {
+        "password_hash": password_hash,
+        "token": token,
+        "expires": expires
+    }
+
+    # Adatok mentése
+    with open(file_path, "w", encoding="utf-8") as file:
+        json.dump(user_data, file, indent=4)
+
+
+def read_user_data(username: str, password: str, filename="user_data.json"):
+    """Felhasználó hitelesítése és token visszaadása, ha még érvényes."""
+    file_path = os.path.join(os.path.dirname(__file__), filename)
+
+    # Ha a fájl nem létezik, nincs mit ellenőrizni
+    if not os.path.exists(file_path):
+        return {"error": "Nincs ilyen adatfájl."}
+
+    # Fájl beolvasása
+    with open(file_path, "r", encoding="utf-8") as file:
+        try:
+            user_data = json.load(file)
+        except json.JSONDecodeError:
+            return {"error": "Hibás JSON fájl."}
+
+    # Ellenőrizzük, hogy a username létezik-e
+    if username not in user_data:
+        return {"error": "Érvénytelen felhasználónév."}
+
+    stored_password_hash = user_data[username]["password_hash"]
+    token = user_data[username]["token"]
+    expires = user_data[username]["expires"]
+
+    # Jelszó ellenőrzése
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    if password_hash != stored_password_hash:
+        return {"error": "Helytelen jelszó."}
+
+    # Expiry ellenőrzése: Csak akkor adjuk vissza a tokent, ha még nem járt le
+    current_time = int(time.time())
+    if expires > current_time:
+        return {"token": token, "expires": expires}
+
+    return {"error": "A token lejárt."}
+
+
 def esolar_web_autenticate(region, username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
         return True
 
-    global AUTHORIZATION_TOKEN
-    global AUTHORIZATION_EXPIRES
-
     try:
         session = requests.Session()
 
-        if (AUTHORIZATION_TOKEN is not None
-                and isinstance(AUTHORIZATION_TOKEN, str)
-                and len(AUTHORIZATION_TOKEN) > 0
-                and AUTHORIZATION_EXPIRES is not None
-                and isinstance(AUTHORIZATION_EXPIRES, int)
-                and AUTHORIZATION_EXPIRES > int(time.time())):
-            dt = datetime.datetime.fromtimestamp(AUTHORIZATION_EXPIRES).strftime("%Y-%m-%d %H:%M:%S")
+        # I try to authenticate as rarely as possible because if there are too many logins, a captcha challenge might appear.
+        stored_data = read_user_data(username, password)
+        if "error" not in stored_data and "token" in stored_data and "expires" in stored_data:
+            authorization_token = stored_data["token"]
+            authorization_expires = int(stored_data["expires"])
+            dt = datetime.datetime.fromtimestamp(authorization_expires).strftime("%Y-%m-%d %H:%M:%S")
             _LOGGER.debug(
-                f"Using cached token, expires at {dt}"
+                f"Using disk cached token, expires at {dt}"
             )
-            session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
+            session.headers.update({'Authorization': authorization_token})
             return session
 
         _LOGGER.debug(
@@ -295,9 +357,10 @@ def esolar_web_autenticate(region, username, password):
             if "data" in answer and "token" in answer['data'] and 'expiresIn' in answer['data']:
                 expires_in = int(answer['data']['expiresIn']) #sec, nem ms
                 expires_at = int(time.time() + expires_in)-9 #3nap-10s
-                AUTHORIZATION_EXPIRES = expires_at
-                AUTHORIZATION_TOKEN =  answer['data']['tokenHead'] + answer['data']['token']
-                session.headers.update({'Authorization': AUTHORIZATION_TOKEN})
+                authorization_expires = expires_at
+                authorization_token =  answer['data']['tokenHead'] + answer['data']['token']
+                store_user_data(username, password, authorization_token, authorization_expires)
+                session.headers.update({'Authorization': authorization_token})
                 _LOGGER.debug(
                     f"Using new token, expires in {int(expires_at - time.time())} seconds",
                 )
@@ -439,6 +502,10 @@ def web_get_plant_statistics(region, session, plant_info):
                         data["deviceSn"] = device["deviceSn"]
                         break
 
+            if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
+                if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
+                    data["emsSn"] = plant["moduleSnList"][0]
+
             signed = calc_signature(data)
 
             response = session.get(
@@ -455,6 +522,8 @@ def web_get_plant_statistics(region, session, plant_info):
             plant_statistics = response.json()
             if 'data' in plant_statistics and 'deviceSnList' in plant_statistics['data']:
                 del plant_statistics['data']['deviceSnList']
+            if 'data' in plant_statistics and 'moduleSnList' in plant_statistics['data']:
+                del plant_statistics['data']['moduleSnList']
             plant.update(plant_statistics["data"])
 
     except requests.exceptions.HTTPError as errh:
@@ -583,14 +652,14 @@ def web_get_device_raw_data(region, session, plant_info):
                     'random': generatkey(32),
                     'clientId': 'esolar-monitor-admin',
                 }
-
+                yesterday = datetime.date.today() - datetime.timedelta(days=1)
                 payload = {
                     "deviceSn": device["deviceSn"],
                     "pageSize": 1,
                     "pageNo": 1,
                     "deviceType": 0,
                     'timeStr': datetime.date.today().strftime("%Y-%m-%d 00:00:00"),
-                    "startTime": datetime.date.today().strftime("%Y-%m-%d 00:00:00"),
+                    "startTime": yesterday.strftime("%Y-%m-%d 00:00:00"),
                     "endTime": datetime.date.today().strftime("%Y-%m-%d 23:59:59"),
                 }
 
