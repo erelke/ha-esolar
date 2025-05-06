@@ -69,6 +69,10 @@ B_BUYELEC = "Battery Buy Energy"
 B_SELLELEC = "Battery Sell Energy"
 B_BUY_RATE = "Battery Buy Rate (%)"
 B_SELL_RATE = "Battery Sell Rate (%)"
+B_TODAY_CHARGE_E = "Battery Charge Today Energy"
+B_TODAY_DISCHARGE_E = "Battery Discharge Today Energy"
+B_TOTAL_CHARGE_E = "Battery Charge Total Energy"
+B_TOTAL_DISCHARGE_E = "Battery Discharge Total Energy"
 
 
 B_GRID_POWER_W = "Grid Power (W)"

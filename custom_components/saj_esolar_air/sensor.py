@@ -27,6 +27,10 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ESolarCoordinator
 from .const import (
+    B_TODAY_CHARGE_E,
+    B_TODAY_DISCHARGE_E,
+    B_TOTAL_CHARGE_E,
+    B_TOTAL_DISCHARGE_E,
     CONF_INVERTER_SENSORS,
     CONF_MONITORED_SITES,
     CONF_PV_GRID_DATA,
@@ -163,34 +167,34 @@ async def async_setup_entry(
                     ESolarSensorPlantTodayEquivalentHours( coordinator, plant["plantName"], plant["plantUid"] )
                 )
 
-            if plant["type"] in [1,2,3] and (("hasBattery" in plant and plant["hasBattery"] == 1) or "hasBattery" not in plant):
-                sources = ["todayBuyEnergy", "todayChargeEnergy", "todayDisChargeEnergy", "todayLoadEnergy", "todaySellEnergy",
-                           "totalBuyEnergy", "totalChargeEnergy", "totalDisChargeEnergy", "totalLoadEnergy", "totalSellEnergy",
-                           "yearBuyEnergy", "yearBatChgEnergy", "yearBatDischgEnergy", "yearLoadEnergy", "yearSellEnergy",
-                           "monthBuyEnergy", "monthBatChgEnergy", "monthBatDischgEnergy", "monthLoadEnergy", "monthSellEnergy",
-                           ]
+            # if plant["type"] in [1,2,3] and (("hasBattery" in plant and plant["hasBattery"] == 1) or "hasBattery" not in plant):
+            #     sources = ["todayBuyEnergy", "todayChargeEnergy", "todayDisChargeEnergy", "todayLoadEnergy", "todaySellEnergy",
+            #                "totalBuyEnergy", "totalChargeEnergy", "totalDisChargeEnergy", "totalLoadEnergy", "totalSellEnergy",
+            #                "yearBuyEnergy", "yearBatChgEnergy", "yearBatDischgEnergy", "yearLoadEnergy", "yearSellEnergy",
+            #                "monthBuyEnergy", "monthBatChgEnergy", "monthBatDischgEnergy", "monthLoadEnergy", "monthSellEnergy",
+            #                ]
 
-                _LOGGER.debug(
-                    "Setting up ESolarSensorPlantBattery sensors for %s",
-                    plant["plantName"],
-                )
-                for source in sources:
-                    if source in plant and plant[source] is not None and is_float_and_not_int(plant[source]):
-                        entities.append(
-                            ESolarSensorPlantEnergy(
-                                coordinator, plant["plantName"], plant["plantUid"], source
-                            )
-                        )
+            #     _LOGGER.debug(
+            #         "Setting up ESolarSensorPlantBattery sensors for %s",
+            #         plant["plantName"],
+            #     )
+            #     for source in sources:
+            #         if source in plant and plant[source] is not None and is_float_and_not_int(plant[source]):
+            #             entities.append(
+            #                 ESolarSensorPlantEnergy(
+            #                     coordinator, plant["plantName"], plant["plantUid"], source
+            #                 )
+            #             )
 
-                _LOGGER.debug(
-                    "Setting up ESolarSensorPlantBatterySoC sensor for %s",
-                    plant["plantName"],
-                )
-                entities.append(
-                    ESolarSensorPlantBatterySoC(
-                        coordinator, plant["plantName"], plant["plantUid"]
-                    )
-                )
+            #     _LOGGER.debug(
+            #         "Setting up ESolarSensorPlantBatterySoC sensor for %s",
+            #         plant["plantName"],
+            #     )
+            #     entities.append(
+            #         ESolarSensorPlantBatterySoC(
+            #             coordinator, plant["plantName"], plant["plantUid"]
+            #         )
+            #     )
 
             if use_inverter_sensors and plant["type"] in [0,1,2]:
                 for device in plant["deviceSnList"]:
@@ -1812,6 +1816,10 @@ class ESolarInverterBatterySoC(ESolarSensor):
             B_H_LOAD: None,
             B_B_LOAD: None,
             S_POWER: None,
+            B_TODAY_CHARGE_E: None,
+            B_TODAY_DISCHARGE_E : None,
+            B_TOTAL_CHARGE_E: None,
+            B_TOTAL_DISCHARGE_E : None,
         }
 
     async def async_update(self) -> None:
@@ -1851,6 +1859,10 @@ class ESolarInverterBatterySoC(ESolarSensor):
                     self._attr_extra_state_attributes[B_CURRENT] = kit["deviceStatisticsData"]["batCurrent"]
                     self._attr_extra_state_attributes[B_POWER] = kit["deviceStatisticsData"]["batPower"]
                     self._attr_extra_state_attributes[B_T_LOAD] = kit["deviceStatisticsData"]["totalLoadPowerwatt"]
+                    self._attr_extra_state_attributes[B_TODAY_CHARGE_E] = float(kit["deviceStatisticsData"]["todayBatChgEnergy"]) * 1000
+                    self._attr_extra_state_attributes[B_TODAY_DISCHARGE_E] = float(kit["deviceStatisticsData"]["todayBatDisEnergy"]) * 1000
+                    self._attr_extra_state_attributes[B_TOTAL_CHARGE_E] = float(kit["deviceStatisticsData"]["totalBatChgEnergy"]) * 1000
+                    self._attr_extra_state_attributes[B_TOTAL_CHARGE_E] = float(kit["deviceStatisticsData"]["totalBatDisEnergy"]) * 1000
                     # self._attr_extra_state_attributes[B_H_LOAD] = plant["homeLoadPower"] # ???
                     if "backupTotalLoadPowerWatt" in kit and kit["backupTotalLoadPowerWatt"] is not None:
                         self._attr_extra_state_attributes[B_B_LOAD] = kit["deviceStatisticsData"]["backupTotalLoadPowerWatt"]
