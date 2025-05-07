@@ -20,7 +20,7 @@ _LOGGER = logging.getLogger(__name__)
 
 WEB_TIMEOUT = 30
 END_USER_PLANT_LIST = None
-WEB_PLANT_DATA = None
+WEB_PLANT_DATA: dict = {}
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
@@ -79,20 +79,30 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
 
     try:
         session = esolar_web_autenticate(region, username, password)
-        if WEB_PLANT_DATA is None:
+        plant_info = None
+        if (WEB_PLANT_DATA is not None
+                and username in WEB_PLANT_DATA
+                and WEB_PLANT_DATA[username] is not None
+                and "plant_list" in WEB_PLANT_DATA[username]
+                and "plant_info" in WEB_PLANT_DATA[username]
+                and WEB_PLANT_DATA[username]["plant_list"] == plant_list
+                and WEB_PLANT_DATA[username]["plant_info"] is not None):
+            plant_info = WEB_PLANT_DATA[username]["plant_info"]
+
+        if plant_info is None :
             _LOGGER.debug(
-                f"We don't have plant_data, requesting"
+                f"We don't have all plant_info, requesting"
             )
             plant_info = web_get_plant(region, session, plant_list)
-            WEB_PLANT_DATA = plant_info
+            WEB_PLANT_DATA = {username: {'plant_list': plant_list, 'plant_info': plant_info}}
         else:
             _LOGGER.debug(
-                f"We have plant data, using cached data"
+                f"We have plant data for {username}, using cached data"
             )
-            plant_info = WEB_PLANT_DATA
 
         web_get_plant_details(region, session, plant_info)
         web_get_device_list(region, session, plant_info)
+        web_get_sec_statistics(region, session, plant_info)
         web_get_plant_statistics(region, session, plant_info)
         web_get_plant_overview(region, session, plant_info)
         web_get_device_info(region, session, plant_info)
@@ -104,6 +114,7 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
             for device in plant["devices"]:
                 if "hasBattery" in device and device["hasBattery"] == 1:
                     plant["hasBattery"] = 1
+
 
 
         plant_info['status'] = 'success'
@@ -678,9 +689,15 @@ def web_get_device_raw_data(region, session, plant_info):
 
                 raw = response.json()
                 if 'data' in raw and 'list' in raw['data'] and len(raw['data']['list']) > 0:
-                    device.update({"raw": raw["data"]["list"][0]})
-                else:
-                    device.update({"raw": {}})
+                    raw_data = raw["data"]["list"][0]
+                    if "deviceTemp" in raw_data:
+                        device.update({"deviceTemp": raw_data["deviceTemp"]})
+                    if "backupTotalLoadPowerWatt" in raw_data:
+                        device.update({"backupTotalLoadPowerWatt": raw_data["backupTotalLoadPowerWatt"]})
+                if "deviceTemp" not in device:
+                    device.update({"deviceTemp": 0})
+                if "backupTotalLoadPowerWatt" not in device:
+                    device.update({"backupTotalLoadPowerWatt": 0})
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -781,6 +798,109 @@ def web_get_plant_flow_data(region, session, plant_info):
                 _LOGGER.warning(
                     "Nincs data a flow-ban!? {flow}",
                 )
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_sec_statistics(region, session, plant_info):
+    """Retrieve SEC/EMS devices from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain sec devices")
+
+    try:
+        for plant in plant_info["plantList"]:
+            if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
+                data = {
+                    "plantUid": plant["plantUid"],
+                    'appProjectName': 'elekeeper',
+                    'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                    'lang': 'en',
+                    'timeStamp': int(time.time() * 1000),
+                    'random': generatkey(32),
+                    'clientId': 'esolar-monitor-admin',
+                }
+
+                signed = calc_signature(data)
+
+                response = session.get(
+                    base_url(region) + "/monitor/sec/plantSECModuleList",
+                    params=signed,
+                    timeout=WEB_TIMEOUT
+                )
+
+                response.raise_for_status()
+
+                if response.status_code != 200:
+                    raise ValueError(f"Get plant SECModuleList data error: {response.status_code}")
+
+                answer = response.json()
+                if 'data' in answer and answer["data"] is not None and len(answer["data"]) > 0:
+                    for module in answer["data"]:
+                        if "moduleSn" in module and module["moduleSn"] is not None:
+                            module_sn = module["moduleSn"]
+                            if "modules" not in plant:
+                                plant["modules"] = []
+                            found = False
+                            for plant_module in plant["modules"]:
+                                if "moduleSn" in plant_module and plant_module["moduleSn"] is not None and \
+                                        plant_module["moduleSn"] == module_sn:
+                                    plant_module.update(module)
+                                    found = True
+                            if not found:
+                                plant["modules"].append(module)
+
+                            if "moduleSnList" not in plant:
+                                plant["moduleSnList"] = {}
+                            if module_sn not in plant["moduleSnList"]:
+                                plant["moduleSnList"].append(module_sn)
+
+                if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
+                    for moduleSn in plant["moduleSnList"]:
+                        data = {
+                            "moduleSn": moduleSn,
+                            "plantUid": plant["plantUid"],
+                            "chartDateType": 5,
+                            "chartDay": datetime.date.today().strftime("%Y-%m-%d"),
+                            'appProjectName': 'elekeeper',
+                            'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                            'lang': 'en',
+                            'timeStamp': int(time.time() * 1000),
+                            'random': generatkey(32),
+                            'clientId': 'esolar-monitor-admin',
+                        }
+
+                        signed = calc_signature(data)
+
+                        response = session.get(
+                            base_url(region) + "/monitor/plant/chart/getSecSelfUseEnergyData",
+                            params = signed,
+                            timeout=WEB_TIMEOUT
+                        )
+
+                        response.raise_for_status()
+
+                        if response.status_code != 200:
+                            raise ValueError(f"Get plant getSecSelfUseEnergyData error: {response.status_code}")
+
+                        answer = response.json()
+                        if 'data' in answer and answer["data"] is not None:
+                            if "modules" not in plant:
+                                plant["modules"] = []
+                            found = False
+                            for plant_module in plant["modules"]:
+                                if "moduleSn" in plant_module and plant_module["moduleSn"] is not None and \
+                                        plant_module["moduleSn"] == moduleSn:
+                                    plant_module.update(answer["data"])
+                                    found = True
+                            if not found:
+                                plant["modules"].append(answer["data"])
+
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)

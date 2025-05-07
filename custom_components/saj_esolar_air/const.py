@@ -20,6 +20,8 @@ P_UNKNOWN = "Unknown"
 
 # Plant Sensor Attributes
 PLANT_MODEL = "Solar Plant"
+DEVICE_MODEL = "Solar Device"
+METER_MODEL = "Solar Meter"
 P_NAME = "Plant Name"
 P_UID = "Plant UId"
 P_ADR = "Plant Address"
@@ -69,7 +71,10 @@ B_BUYELEC = "Battery Buy Energy"
 B_SELLELEC = "Battery Sell Energy"
 B_BUY_RATE = "Battery Buy Rate (%)"
 B_SELL_RATE = "Battery Sell Rate (%)"
-
+B_TODAY_CHARGE_E = "Battery Charge Today Energy"
+B_TODAY_DISCHARGE_E = "Battery Discharge Today Energy"
+B_TOTAL_CHARGE_E = "Battery Charge Total Energy"
+B_TOTAL_DISCHARGE_E = "Battery Discharge Total Energy"
 
 B_GRID_POWER_W = "Grid Power (W)"
 B_GRID_POWER_VA = "Grid Power (VA)"
@@ -145,3 +150,4 @@ I_TOTAL = 'Total income'
 
 EH_TODAY = 'Today equivalent hours'
 EH_TOTAL = 'Total equivalent hours'
+MODULE_SN = 'Module serial number'
