@@ -113,6 +113,7 @@ async def async_setup_entry(
     plant_entities: list[ESolarPlant] = []
     device_entities: list[ESolarDevice] = []
     meter_entities: list[ESolarMeter] = []
+    bat_entities: list[ESolarBattery] = []
     esolar_data: dict = coordinator.data
     my_plants = entry.options.get(CONF_MONITORED_SITES)
     use_inverter_sensors = entry.options.get(CONF_INVERTER_SENSORS)
@@ -310,9 +311,28 @@ async def async_setup_entry(
                             ESolarSensorMeterPower( coordinator, plant["plantName"], plant["plantUid"], module["moduleSn"])
                         )
 
+            if "batteries" in plant and plant["batteries"] is not None:
+                for battery in plant["batteries"]:
+                    if "batSn" in battery and battery["batSn"] is not None:
+                        _LOGGER.debug(
+                            "Setting up ESolarSensorBatteryEntities for %s and battery %s",
+                            plant["plantName"],
+                            battery["batSn"],
+                        )
+                        bat_entities.append(
+                            ESolarSensorBatteryEntity( coordinator, plant["plantName"], plant["plantUid"], battery["batSn"], "batSoc", 1)
+                        )
+                        bat_entities.append(
+                            ESolarSensorBatteryEntity( coordinator, plant["plantName"], plant["plantUid"], battery["batSn"], "batTemperature")
+                        )
+                        bat_entities.append(
+                            ESolarSensorBatteryEntity( coordinator, plant["plantName"], plant["plantUid"], battery["batSn"], "batSoh")
+                        )
+
     async_add_entities(plant_entities, True)
     async_add_entities(device_entities, True)
     async_add_entities(meter_entities, True)
+    async_add_entities(bat_entities, True)
 
 
 class ESolarPlant(CoordinatorEntity[ESolarCoordinator], SensorEntity):
@@ -420,8 +440,6 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
 
-        print("EsolarMeter initialized")
-
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device_info of the device."""
@@ -443,6 +461,54 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
             sw_version=self._sw_version,
             identifiers={
                 (MODULE_SN, self._module_sn),
+            }
+        )
+
+        return device_info
+
+class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
+    """Representation of a generic ESolar sensor."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid, bat_sn = None) -> None:
+        """Initialize the sensor."""
+        super().__init__(coordinator)
+
+        self._coordinator = coordinator
+        self._plant_name = plant_name
+        self._plant_uid = plant_uid
+        self._bat_sn = bat_sn
+
+        self._device_name: None | str = bat_sn
+        self._device_model: None | str = METER_MODEL
+        self._sw_version: None | str = None
+        self._hw_version: None | str = None
+
+    @property
+    def device_info(self) -> DeviceInfo:
+        """Return the device_info of the device."""
+
+        bms_sn = None
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] == self._plant_name:
+                if "batteries" in plant and plant["batteries"] is not None:
+                    for battery in plant["batteries"]:
+                        if battery["batSn"] == self._bat_sn:
+                            self._device_model = battery["batModel"] or None
+                            self._sw_version = battery["bmsSoftwareVersion"] or None
+                            self._hw_version = battery["bmsHardwareVersion"] or None
+                            bms_sn = battery["bmsSn"] or None
+                            break
+
+        device_info = DeviceInfo(
+            manufacturer=MANUFACTURER,
+            model=self._device_model,
+            name=self._device_name,
+            serial_number=self._bat_sn,
+            sw_version=self._sw_version,
+            hw_version=self._hw_version,
+            identifiers={
+                (MODULE_SN, self._bat_sn),
+                ('BMS_SN', bms_sn),
             }
         )
 
@@ -2040,7 +2106,6 @@ class ESolarSensorMeterPower(ESolarMeter):
             coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid, module_sn=module_sn
         )
 
-        print("ESolarSensorMeterPower initialized 1")
         self._attr_extra_state_attributes = {}
         self._last_updated: datetime.datetime | None = None
         self._attr_available = False
@@ -2052,25 +2117,19 @@ class ESolarSensorMeterPower(ESolarMeter):
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
         self._attr_native_value = None
-        print("ESolarSensorMeterPower initialized 2")
 
     async def async_update(self) -> None:
         """Get the latest data and updates the states."""
-        print("ESolarSensorMeterPower async_update 1")
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
-            print("ESolarSensorMeterPower async_update 2")
             if "modules" in plant and plant["modules"] is not None:
                 for plant_module in plant["modules"]:
                     if plant_module['moduleSn'] == self._module_sn and "gridPower" in plant_module and plant_module["gridPower"] is not None:
-                        print("ESolarSensorMeterPower async_update 3")
                         # Setup static attributes
                         self._attr_available = True
                         # Setup state
                         self._attr_native_value = float(plant_module["gridPower"])
-                        print("ESolarSensorMeterPower async_update 4")
-                        print(self._attr_native_value)
 
                     copy = plant_module.copy()
                     to_remove = ["deviceSnList", "moduleFw", "moduleModel", "moduleSn", "plantName", "plantUid"]
@@ -2084,14 +2143,72 @@ class ESolarSensorMeterPower(ESolarMeter):
     def native_value(self) -> float | None:
         """Return sensor state."""
         return self._attr_native_value
-        # print("ESolarSensorMeterPower native_value 1")
-        # value = None
-        # for plant in self._coordinator.data["plantList"]:
-        #     if plant["plantName"] == self._plant_name:
-        #         if "modules" in plant and plant["modules"] is not None:
-        #             for plant_module in plant["modules"]:
-        #                 if plant_module['moduleSn'] == self._module_sn and "gridPower" in plant_module and plant_module["gridPower"] is not None:
-        #                     # Setup state
-        #                     value = float(plant_module["gridPower"])
-        # print("ESolarSensorMeterPower native_value 2")
-        # return value
+
+class ESolarSensorBatteryEntity(ESolarBattery):
+    """Representation of an eSolar sensor for the battery."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid, bat_sn, prop, add_attributes = None ) -> None:
+        """Initialize the sensor."""
+
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid, bat_sn=bat_sn
+        )
+
+        self._attr_extra_state_attributes = {}
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+        self._attr_unique_id = f"Solar_battery_{self._bat_sn}_{prop}"
+        self._property = prop
+
+        self._attr_name = f"Solar battery {self._bat_sn} {split_camel_case(prop)}"
+        self._attr_native_value = None
+        self._add_attributes = add_attributes
+
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+
+        if prop == 'batSoh' or prop == 'batSoc':
+            self._attr_native_unit_of_measurement = PERCENTAGE
+            self._attr_device_class = SensorDeviceClass.BATTERY
+        elif prop == 'batTemperature':
+            self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+            self._attr_device_class = SensorDeviceClass.TEMPERATURE
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+
+    async def async_update(self) -> None:
+        """Get the latest data and updates the states."""
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            if "batteries" in plant and plant["batteries"] is not None:
+                for battery in plant["batteries"]:
+                    if battery['batSn'] == self._bat_sn:
+                        if self._property in battery and battery[self._property] is not None:
+                            # Setup static attributes
+                            self._attr_available = True
+                            # Setup state
+                            self._attr_native_value = float(extract_number(battery[self._property])) * (100 if self._property == 'batSoh' else 1)
+                            if self._property == "batTemperature" and "unitOfTemperature" in battery and battery["unitOfTemperature"] is not None:
+                                if battery["unitOfTemperature"] == "℃" or battery["unitOfTemperature"] == "C":
+                                    self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
+                                elif battery["unitOfTemperature"] == "°F" or battery["unitOfTemperature"] == "C":
+                                    self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
+                                elif battery["unitOfTemperature"] == "K":
+                                    self._attr_native_unit_of_measurement = UnitOfTemperature.KELVIN
+
+                        if self._add_attributes is not None:
+                            copy = battery.copy()
+                            to_remove = ["deviceSn", "batSn", "bmsHardwareVersion", "bmsSoftwareVersion", "plantName", "plantUid", "batSoc", "batTemperature", "batSoh"]
+                            for key in to_remove:
+                                if key in copy:
+                                    del copy[key]
+
+                            self._attr_extra_state_attributes = copy
+
+    @property
+    def native_value(self) -> float | None:
+        """Return sensor state."""
+        return self._attr_native_value
+
+def extract_number(string):
+    match = re.findall(r'\d+', string)  # Minden számjegyet megtalál
+    return int(match[0]) if match else None  # Visszaadja az első számot
