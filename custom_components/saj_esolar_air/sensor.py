@@ -1928,7 +1928,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
             if "devices" not in plant or plant["devices"] is None:
                 continue
             for kit in plant["devices"]:
-                if kit["deviceSn"] == self.inverter_sn:
+                if kit["deviceSn"] == self._inverter_sn:
                     self._attr_extra_state_attributes[I_MODEL] = kit["deviceType"]
                     self._attr_extra_state_attributes[I_SN] = kit["deviceSn"]
                     self._attr_extra_state_attributes[B_CAPACITY] = kit["deviceStatisticsData"]["batCapcity"]
@@ -1946,7 +1946,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
             if "devices" not in plant or plant["devices"] is None:
                 continue
             for kit in plant["devices"]:
-                if kit["deviceSn"] == self.inverter_sn:
+                if kit["deviceSn"] == self._inverter_sn:
                     value = float(kit["deviceStatisticsData"]["batEnergyPercent"])
 
                     # Set up dynamic attributes
