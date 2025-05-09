@@ -2035,15 +2035,23 @@ class ESolarInverterBatterySoC(ESolarDevice):
                     else:
                         self._attr_extra_state_attributes[B_B_LOAD] = None
 
+                    if kit["batteryDirection"] == 0:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
+                    elif kit["batteryDirection"] == 1:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
+                    elif kit["batteryDirection"] == -1:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                    else:
+                        self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
 
-            if plant["batteryDirection"] == 0:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
-            elif plant["batteryDirection"] == 1:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
-            elif plant["batteryDirection"] == -1:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
-            else:
-                self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
+                    if kit["deviceStatisticsData"]["gridDirection"] == 1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
+                    elif kit["deviceStatisticsData"]["gridDirection"] == -1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
+                    elif kit["deviceStatisticsData"]["gridDirection"] == 0:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
+                    else:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
 
             grid_power_watt = 0
             if plant["devices"] is not None:
@@ -2054,15 +2062,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
                                 grid_power_watt += float(grid['gridPowerwatt'])
             self._attr_extra_state_attributes[G_POWER] = grid_power_watt
 
-            if "gridDirection" in plant and plant["gridDirection"] is not None:
-                if plant["gridDirection"] == 1:
-                    self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
-                elif plant["gridDirection"] == -1:
-                    self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
-                else:
-                    self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
-            else:
-                self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
+            
 
             # ???
             # self._attr_extra_state_attributes[IO_POWER] = kit[
