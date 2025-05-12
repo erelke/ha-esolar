@@ -1,20 +1,13 @@
 """ESolar Cloud Platform data fetchers."""
-import calendar
 import datetime
 import time
 import logging
-import random
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import pad, unpad
-from Crypto.Random import get_random_bytes
-import hashlib
-import binascii
 import json
 import hashlib
 import os
 import requests
-import urllib.parse
 from dateutil.relativedelta import relativedelta
+from .elekeeper import calc_signature, encrypt, generatkey
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -44,26 +37,8 @@ def base_url(region):
     else:
         raise ValueError("Region not set. Please run Configure again")
 
-def add_months(sourcedate, months):
-    """SAJ eSolar Helper Function - Adds a months to input."""
-    month = sourcedate.month - 1 + months
-    year = sourcedate.year + month // 12
-    month = month % 12 + 1
-    day = min(sourcedate.day, calendar.monthrange(year, month)[1])
-    return datetime.date(year, month, day)
-
-
-def add_years(source_date, years):
-    """SAJ eSolar Helper Function - Adds a years to input."""
-    try:
-        return source_date.replace(year=source_date.year + years)
-    except ValueError:
-        return source_date + (
-            datetime.date(source_date.year + years, 1, 1)
-            - datetime.date(source_date.year, 1, 1)
-        )
-
 def dump(region, username, password):
+    """ dumps the data for the region, username and password. Called from the CLI. """
     plant_info = get_esolar_data(region, username, password)
 
     with open('plant_info.json', 'w') as json_file:
@@ -94,10 +69,11 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                 f"We don't have all plant_info, requesting"
             )
             plant_info = web_get_plant(region, session, plant_list)
+            web_get_ems_list(region, session, plant_info)
             WEB_PLANT_DATA = {username: {'plant_list': plant_list, 'plant_info': plant_info}}
         else:
             _LOGGER.debug(
-                f"We have plant data for {username}, using cached data"
+                f"We have plant data for {username}/{plant_list}, using cached data"
             )
 
         web_get_plant_details(region, session, plant_info)
@@ -108,7 +84,6 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
         web_get_device_info(region, session, plant_info)
         web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
-        # print(plant_info["plantList"][0]["yearPvEnergy"] if "yearPvEnergy" in plant_info["plantList"][0] else "No yearPvEnergy")
 
         for plant in plant_info["plantList"]:
             try:
@@ -142,178 +117,6 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
         raise ValueError(errv) from errv
 
     return plant_info
-
-
-def sha1_hash(data):
-    """SHA-1 hash kiszámítása, megfelelően konvertálva 32 bites előjeles számokká."""
-    if isinstance(data, str):
-        data = data.encode()  # String átalakítása byte formátumba
-    elif isinstance(data, bytes):
-        data = bytearray(data)  # Ha byte-ként jön, átalakítjuk megfelelően
-    else:
-        data = str(data).encode()  # Egyéb típusok átalakítása
-
-    sha1 = hashlib.sha1()
-    sha1.update(data)
-
-    # SHA-1 hash 20 bájt, 5 darab 32 bites számként visszaadva
-    result = [int.from_bytes(sha1.digest()[i:i + 4], "big", signed=True) for i in range(0, 20, 4)]
-    return result
-
-def extract_bytes_from_words(words):
-    """32 bites számokat átalakít 8 bites byte-listává."""
-    t = []
-    for n in range(0, 32 * len(words), 8):
-        t.append((words[n >> 5] >> (24 - n % 32)) & 255)
-    return t
-
-def bytes_to_hex_string(e):
-    """Bytes lista átalakítása hexadecimális stringgé."""
-    t = []
-    for n in range(len(e)):
-        t.append(hex(e[n] >> 4)[2:])  # Magasabb 4 bit átalakítása hexadecimálissá
-        t.append(hex(e[n] & 15)[2:])  # Alacsonyabb 4 bit átalakítása hexadecimálissá
-    return "".join(t)
-
-def sign(data):
-    n = sha1_hash(data)
-    b = extract_bytes_from_words(n)
-    h = bytes_to_hex_string(b)
-    return h
-
-def hex_string_to_signed_array(hex_str):
-    """Hexadecimális karakterlánc átalakítása előjeles 32 bites számokat tartalmazó tömbbé."""
-    t = len(hex_str)
-    n = [0] * ((t + 7) // 8)  # Létrehozunk egy megfelelő méretű listát
-
-    for r in range(0, t, 2):
-        byte_val = int(hex_str[r:r + 2], 16)  # Hexadecimális érték konvertálása
-        n[r >> 3] |= byte_val << (24 - (r % 8) * 4)  # Biteltolás
-
-    # Az előjeles 32 bites konverzió biztosítása
-    n = [(x & 0x7FFFFFFF) - (x & 0x80000000) for x in n]
-
-    return n
-
-def parse_string(e):
-    """Szöveg karakterkódokból számtömbbé alakítása."""
-    t = len(e)
-    n = [0] * ((t + 3) // 4)  # Létrehozunk egy megfelelő méretű listát
-
-    for r in range(t):
-        char_code = ord(e[r]) & 255  # Unicode karakterek alsó 8 bitjének kinyerése
-        n[r >> 2] |= char_code << (24 - (r % 4) * 8)
-
-    return n, t  # Hasonló visszatérési érték, mint az eredeti JS függvény
-
-def process_text(e):
-    """Szöveg kódolása és feldolgozása."""
-    encoded = urllib.parse.quote(e)  # JavaScript encodeURIComponent megfelelője
-    decoded = urllib.parse.unquote(encoded)  # JavaScript unescape megfelelője
-    return parse_string(decoded)  # Az előző parse_string függvény meghívása
-
-def dict_to_sorted_string(data):
-    """Szótár elemeit átalakítja abc sorrendbe, majd kulcs=érték formátumban összefűzi."""
-    sorted_items = sorted(data.items())  # Kulcsok alapján rendezés
-    result_string = "&".join(f"{k}={v}" for k, v in sorted_items)  # Összefűzés
-    return result_string
-
-def calc_signature(_dict):
-    keys = _dict.keys()
-    keys_str = ','.join(keys)
-    string = dict_to_sorted_string(_dict)+"&key=ktoKRLgQPjvNyUZO8lVc9kU1Bsip6XIe" #esolar app.js
-    h = hashlib.md5(string.encode('latin-1')).hexdigest()
-    signature = sign(h).upper()
-
-    _dict['signature'] = signature
-    _dict['signParams'] = keys_str
-    return _dict
-
-def pad_pkcs7(data, block_size=16):
-    """PKCS7 padding hozzáadása, hogy kompatibilis legyen a JavaScript verzióval."""
-    padding_len = block_size - (len(data) % block_size)
-    return data + bytes([padding_len] * padding_len)
-
-def aes_ecb_encrypt(plaintext, key_hex):
-    """AES-ECB titkosítás hexadecimális kulccsal, PKCS7 padding-et alkalmazva."""
-    key = binascii.unhexlify(key_hex)  # Hex kulcs átalakítása byte formátumba
-    cipher = AES.new(key, AES.MODE_ECB)  # AES-ECB titkosító inicializálása
-    padded_plaintext = pad_pkcs7(plaintext.encode())  # PKCS7 padding hozzáadása
-    encrypted_bytes = cipher.encrypt(padded_plaintext)  # Titkosítás
-    return binascii.hexlify(encrypted_bytes).decode()  # Hexadecimális eredmény
-
-def encrypt(plaintext):
-    key_hex = 'ec1840a7c53cf0709eb784be480379b6' #esolar app.js
-    return aes_ecb_encrypt(plaintext, key_hex)
-
-def generatkey(length):
-    chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    return ''.join(random.choice(chars) for _ in range(length))
-
-def store_user_data(username: str, password: str, token: str, expires: int, filename="user_data.json"):
-    """Felhasználói adatokat tárol és frissít egy JSON fájlban, jelszó hash-eléssel."""
-    file_path = os.path.join(os.path.dirname(__file__), filename)
-
-    # Jelszó hash-elése
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-
-    # Betöltjük az aktuális adatokat, ha a fájl létezik
-    if os.path.exists(file_path):
-        with open(file_path, "r", encoding="utf-8") as file:
-            try:
-                user_data = json.load(file)
-            except json.JSONDecodeError:
-                user_data = {}  # Ha a fájl üres vagy hibás, létrehozzuk az üres adatstruktúrát
-    else:
-        user_data = {}
-
-    # Frissítés vagy új bejegyzés létrehozása
-    user_data[username] = {
-        "password_hash": password_hash,
-        "token": token,
-        "expires": expires
-    }
-
-    # Adatok mentése
-    with open(file_path, "w", encoding="utf-8") as file:
-        json.dump(user_data, file, indent=4)
-
-
-def read_user_data(username: str, password: str, filename="user_data.json"):
-    """Felhasználó hitelesítése és token visszaadása, ha még érvényes."""
-    file_path = os.path.join(os.path.dirname(__file__), filename)
-
-    # Ha a fájl nem létezik, nincs mit ellenőrizni
-    if not os.path.exists(file_path):
-        return {"error": "Nincs ilyen adatfájl."}
-
-    # Fájl beolvasása
-    with open(file_path, "r", encoding="utf-8") as file:
-        try:
-            user_data = json.load(file)
-        except json.JSONDecodeError:
-            return {"error": "Hibás JSON fájl."}
-
-    # Ellenőrizzük, hogy a username létezik-e
-    if username not in user_data:
-        return {"error": "Érvénytelen felhasználónév."}
-
-    stored_password_hash = user_data[username]["password_hash"]
-    token = user_data[username]["token"]
-    expires = user_data[username]["expires"]
-
-    # Jelszó ellenőrzése
-    password_hash = hashlib.sha256(password.encode()).hexdigest()
-    if password_hash != stored_password_hash:
-        return {"error": "Helytelen jelszó."}
-
-    # Expiry ellenőrzése: Csak akkor adjuk vissza a tokent, ha még nem járt le
-    current_time = int(time.time())
-    if expires > current_time:
-        return {"token": token, "expires": expires}
-
-    return {"error": "A token lejárt."}
-
 
 def esolar_web_autenticate(region, username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
@@ -372,6 +175,11 @@ def esolar_web_autenticate(region, username, password):
         answer = json.loads(response.text)
 
         if "errCode" in answer and answer["errCode"] != 0:
+            if answer["errCode"] == 10004:
+                _LOGGER.error(f"Authorization failed, because {answer['errMsg']}")
+                store_user_data(username, password, None, None) #force reauth
+                return esolar_web_autenticate(region, username, password)
+
             _LOGGER.error(f"Login failed, returned {answer['errMsg']}")
             raise ValueError('Error message in answer: ' + answer['errMsg'])
         else:
@@ -399,6 +207,75 @@ def esolar_web_autenticate(region, username, password):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
+def store_user_data(username: str, password: str, token: str|None, expires: int|None, refresh_token: str|None = None, filename="user_data.json"):
+    """Felhasználói adatokat tárol és frissít egy JSON fájlban, jelszó hash-eléssel."""
+    file_path = os.path.join(os.path.dirname(__file__), filename)
+
+    # Jelszó hash-elése
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+
+    # Betöltjük az aktuális adatokat, ha a fájl létezik
+    if os.path.exists(file_path):
+        with open(file_path, "r", encoding="utf-8") as file:
+            try:
+                user_data = json.load(file)
+            except json.JSONDecodeError:
+                user_data = {}  # Ha a fájl üres vagy hibás, létrehozzuk az üres adatstruktúrát
+    else:
+        user_data = {}
+
+    # Frissítés vagy új bejegyzés létrehozása
+    user_data[username] = {
+        "password_hash": password_hash,
+        "token": token,
+        "expires": expires,
+        "expires_hrs": datetime.datetime.fromtimestamp(expires).strftime("%Y-%m-%d %H:%M:%S"),
+        "refresh_token": refresh_token,
+        "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+    }
+
+    # Adatok mentése
+    with open(file_path, "w", encoding="utf-8") as file:
+        json.dump(user_data, file, indent=4)
+
+def read_user_data(username: str, password: str, filename="user_data.json"):
+    """Felhasználó hitelesítése és token visszaadása, ha még érvényes."""
+    file_path = os.path.join(os.path.dirname(__file__), filename)
+
+    # Ha a fájl nem létezik, nincs mit ellenőrizni
+    if not os.path.exists(file_path):
+        return {"error": "Nincs ilyen adatfájl."}
+
+    # Fájl beolvasása
+    with open(file_path, "r", encoding="utf-8") as file:
+        try:
+            user_data = json.load(file)
+        except json.JSONDecodeError:
+            return {"error": "Hibás JSON fájl."}
+
+    # Ellenőrizzük, hogy a username létezik-e
+    if username not in user_data:
+        return {"error": "Érvénytelen felhasználónév."}
+
+    stored_password_hash = user_data[username]["password_hash"]
+    token = user_data[username]["token"]
+    expires = user_data[username]["expires"]
+    refresh_token = user_data[username]["refresh_token"] if "refresh_token" in user_data[username] else None
+
+    # Jelszó ellenőrzése
+    password_hash = hashlib.sha256(password.encode()).hexdigest()
+    if password_hash != stored_password_hash:
+        return {"error": "Helytelen jelszó."}
+
+    # Expiry ellenőrzése: Csak akkor adjuk vissza a tokent, ha még nem járt le
+    current_time = int(time.time())
+    if expires > current_time:
+        return {"token": token, "expires": expires}
+
+    if refresh_token is not None:
+        return {"refresh_token": refresh_token}
+
+    return {"error": "A token lejárt."}
 
 def web_get_plant(region, session, requested_plant_list=None):
     """Retrieve the plantUid from WEB Portal using web_authenticate."""
@@ -453,9 +330,8 @@ def web_get_plant(region, session, requested_plant_list=None):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
-
 def web_get_plant_details(region, session, plant_info):
-    """Retrieve platUid from the WEB Portal using web_authenticate."""
+    """Retrieve plantUid from the WEB Portal using web_authenticate."""
     if session is None:
         raise ValueError("Missing session identifier trying to obain plants")
 
@@ -524,8 +400,8 @@ def web_get_plant_statistics(region, session, plant_info):
                         break
 
             if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
-                if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
-                    data["emsSn"] = plant["moduleSnList"][0]
+                #if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
+                data["emsSn"] = plant["moduleSnList"][0]
 
             signed = calc_signature(data)
 
@@ -655,7 +531,6 @@ def web_get_device_info(region, session, plant_info):
         raise requests.exceptions.Timeout(errt)
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
-
 
 def web_get_device_raw_data(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
@@ -787,6 +662,10 @@ def web_get_plant_flow_data(region, session, plant_info):
                 'random': generatkey(32),
                 'clientId': 'esolar-monitor-admin',
             }
+
+            if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
+                for moduleSn in plant["moduleSnList"]:
+                    data.update({"emsSn": moduleSn})
 
             signed = calc_signature(data)
 
@@ -960,6 +839,56 @@ def web_get_batteries_data(region, session, plant_info):
             answer = response.json()
             if 'data' in answer and answer["data"] is not None and "list" in answer["data"]:
                 plant["batteries"] = answer["data"]["list"]
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_ems_list(region, session, plant_info):
+    """Retrieve a communication moduls list from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain ems")
+
+    try:
+        for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                "pageSize": 100,
+                "pageNo": 1,
+                "usePage": 1,
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+
+            signed = calc_signature(data)
+
+            response = session.get(
+                base_url(region) + "/monitor/plant/ems/getEmsListByPlant",
+                params = signed,
+                timeout=WEB_TIMEOUT
+            )
+
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get device {plant['plantName']} deviceList error: {response.status_code}")
+
+            answer = response.json()
+            if 'data' in answer and 'list' in answer['data']:
+                ems_list = answer["data"]["list"]
+            else:
+                return
+
+            plant.update({"emsModules": ems_list})
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)

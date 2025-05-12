@@ -48,12 +48,15 @@ def _async_get_diagnostics(
 
     sensitive_keys = [CONF_PASSWORD, CONF_USERNAME, "latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
                       "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail", "moduleSnList",
-                      "email", "plantId", "plantNo", "officeId", "reportId", "aliases"]
+                      "email", "plantId", "plantNo", "officeId", "reportId", "aliases", "identifiers", "serial_number",
+                      "emsModulePc", "emsModuleSn"]
     data = {
         "name": entry.title,
         "entry": config,
         "runtime_data": runtime_data,
     }
+    if device is not None:
+        data["device"] = device.dict_repr
 
     return anonymize_data(data, sensitive_keys)
 
