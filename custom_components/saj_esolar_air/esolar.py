@@ -69,7 +69,7 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                 f"We don't have all plant_info, requesting"
             )
             plant_info = web_get_plant(region, session, plant_list)
-            web_get_ems_list(region, session, plant_info)
+            #web_get_ems_list(region, session, plant_info)
             WEB_PLANT_DATA = {username: {'plant_list': plant_list, 'plant_info': plant_info}}
         else:
             _LOGGER.debug(
@@ -575,14 +575,21 @@ def web_get_device_raw_data(region, session, plant_info):
                 raw = response.json()
                 if 'data' in raw and 'list' in raw['data'] and len(raw['data']['list']) > 0:
                     raw_data = raw["data"]["list"][0]
+                    add_data = {}
                     if "deviceTemp" in raw_data:
-                        device.update({"deviceTemp": raw_data["deviceTemp"]})
+                        add_data.update({"deviceTemp": raw_data["deviceTemp"]})
+                    else:
+                        add_data.update({"deviceTemp": 0})
                     if "backupTotalLoadPowerWatt" in raw_data:
-                        device.update({"backupTotalLoadPowerWatt": raw_data["backupTotalLoadPowerWatt"]})
-                if "deviceTemp" not in device:
-                    device.update({"deviceTemp": 0})
-                if "backupTotalLoadPowerWatt" not in device:
-                    device.update({"backupTotalLoadPowerWatt": 0})
+                        add_data.update({"backupTotalLoadPowerWatt": raw_data["backupTotalLoadPowerWatt"]})
+                    else:
+                        add_data.update({"backupTotalLoadPowerWatt": 0})
+                    if "moduleSignal" in raw_data:
+                        add_data.update({"moduleSignal": raw_data["moduleSignal"]})
+                    else:
+                        add_data.update({"moduleSignal": 0})
+
+                    device.update(add_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)

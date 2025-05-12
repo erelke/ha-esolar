@@ -82,7 +82,7 @@ from .const import (
     B_TODAY_CHARGE_E,
     B_TODAY_DISCHARGE_E,
     B_TOTAL_CHARGE_E,
-    B_TOTAL_DISCHARGE_E, DEVICE_MODEL, METER_MODEL, MODULE_SN
+    B_TOTAL_DISCHARGE_E, DEVICE_MODEL, METER_MODEL, MODULE_SN, MODULE_SIGN
 )
 
 ICON_POWER = "mdi:solar-power"
@@ -1064,6 +1064,7 @@ class ESolarInverterEnergyTotal(ESolarDevice):
         self._attr_extra_state_attributes = {
             EH_TODAY: None,
             EH_TOTAL: None,
+            MODULE_SIGN: None,
         }
 
     def process_data(self):
@@ -1081,6 +1082,8 @@ class ESolarInverterEnergyTotal(ESolarDevice):
                         self._attr_extra_state_attributes[EH_TOTAL] = kit["totalEquivalentHours"] if (
                                     "totalEquivalentHours" in kit and kit["totalEquivalentHours"] is not None and float(
                                 kit["totalEquivalentHours"]) > 0) else None
+                        self._attr_extra_state_attributes[MODULE_SIGN] = kit["moduleSignal"] if (
+                                "moduleSignal" in kit and kit["moduleSignal"] is not None) else None
                         # Setup state
                         self._attr_native_value = float(kit["deviceStatisticsData"]["totalPvEnergy"])
 
