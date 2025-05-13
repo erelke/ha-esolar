@@ -88,6 +88,7 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             _LOGGER,
             name=DOMAIN,
             update_interval=update_interval,
+            always_update=True,
         )
         self._entry = entry
 
