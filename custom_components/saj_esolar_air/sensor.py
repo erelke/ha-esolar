@@ -1345,7 +1345,9 @@ class ESolarInverterPW(ESolarDevice):
                             continue
                         for s in kit["deviceStatisticsData"]["pvList"]:
                             if s["pvNo"] == self._pv_string:
-                                self._attr_native_value = float(s["pvpower"])
+                                pv_power = float(s["pvpower"])
+                                pv_power_calc = float(s["pvcurr"]) * float(s["pvvolt"])
+                                self._attr_native_value = pv_power if pv_power != 0 else pv_power_calc
 
 
 class ESolarInverterGridPowerWatt(ESolarDevice):

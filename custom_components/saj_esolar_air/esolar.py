@@ -548,15 +548,17 @@ def web_get_device_raw_data(region, session, plant_info):
                     'random': generatkey(32),
                     'clientId': 'esolar-monitor-admin',
                 }
-                yesterday = datetime.date.today() - datetime.timedelta(days=1)
+                now = datetime.datetime.now()
+                plus_one_hour_end = now.replace(minute=59, second=59) + datetime.timedelta(hours=1)
+                yesterday = plus_one_hour_end - datetime.timedelta(days=1)
                 payload = {
                     "deviceSn": device["deviceSn"],
-                    "pageSize": 1,
+                    "pageSize": 10,
                     "pageNo": 1,
                     "deviceType": 0,
-                    'timeStr': datetime.date.today().strftime("%Y-%m-%d 00:00:00"),
-                    "startTime": yesterday.strftime("%Y-%m-%d 00:00:00"),
-                    "endTime": datetime.date.today().strftime("%Y-%m-%d 23:59:59"),
+                    'timeStr': yesterday.strftime("%Y-%m-%d %H:%M:%S"),
+                    "startTime": yesterday.strftime("%Y-%m-%d %H:%M:%S"),
+                    "endTime": plus_one_hour_end.strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
                 signed = calc_signature(data)
@@ -576,19 +578,18 @@ def web_get_device_raw_data(region, session, plant_info):
                 if 'data' in raw and 'list' in raw['data'] and len(raw['data']['list']) > 0:
                     raw_data = raw["data"]["list"][0]
                     add_data = {}
-                    if "deviceTemp" in raw_data:
-                        add_data.update({"deviceTemp": raw_data["deviceTemp"]})
-                    else:
-                        add_data.update({"deviceTemp": 0})
-                    if "backupTotalLoadPowerWatt" in raw_data:
-                        add_data.update({"backupTotalLoadPowerWatt": raw_data["backupTotalLoadPowerWatt"]})
-                    else:
-                        add_data.update({"backupTotalLoadPowerWatt": 0})
-                    if "moduleSignal" in raw_data:
-                        add_data.update({"moduleSignal": raw_data["moduleSignal"]})
-                    else:
-                        add_data.update({"moduleSignal": 0})
+                    keys = ["deviceTemp", "deviceTempStr", "backupTotalLoadPowerWatt", "isShowModuleSignal", "moduleSignal", "pVP", "pac"]
+                    for key in keys:
+                        if key in raw_data:
+                            add_data[key] = raw_data[key]
+                        else:
+                            add_data[key] = 0
 
+                    if "datetime" in raw_data:
+                        add_data['raw_datetime'] = raw_data["datetime"]
+                    else:
+                        add_data['raw_datetime'] = ''
+                    add_data["raw_payload"] = payload
                     device.update(add_data)
 
     except requests.exceptions.HTTPError as errh:
