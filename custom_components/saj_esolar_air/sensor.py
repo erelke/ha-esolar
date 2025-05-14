@@ -1718,27 +1718,23 @@ class ESolarInverterBatterySoC(ESolarDevice):
                     else:
                         self._attr_extra_state_attributes[B_B_LOAD] = None
 
-                    if "backupTotalLoadPowerWatt" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"][
-                        "backupTotalLoadPowerWatt"] is not None:
-                        if kit["deviceStatisticsData"]["gridDirection"] == 1:
-                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
-                        elif kit["deviceStatisticsData"]["gridDirection"] == -1:
-                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
-                        elif kit["deviceStatisticsData"]["gridDirection"] == 0:
-                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
-                        else:
-                            self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
+                    if kit["batteryDirection"] == 0:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
+                    elif kit["batteryDirection"] == 1:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
+                    elif kit["batteryDirection"] == -1:
+                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                    else:
+                        self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
+
+                    if kit["deviceStatisticsData"]["gridDirection"] == 1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
+                    elif kit["deviceStatisticsData"]["gridDirection"] == -1:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
+                    elif kit["deviceStatisticsData"]["gridDirection"] == 0:
+                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
                     else:
                         self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
-
-            if plant["batteryDirection"] == 0:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
-            elif plant["batteryDirection"] == 1:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
-            elif plant["batteryDirection"] == -1:
-                self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
-            else:
-                self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
 
             grid_power_watt = 0.0
             if "sysGridPowerwatt" in plant and plant["sysGridPowerwatt"] is not None:
