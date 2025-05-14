@@ -133,8 +133,8 @@ async def async_setup_entry(
                 ESolarSensorPlant(coordinator, plant["plantName"], plant["plantUid"], use_pv_grid_attributes)
             )
             # Type enum:
-            #  0 - plant with PV inverter only
-            #  1 - Plant with PV inverter and battery
+            #  0 - plant with PV inverter only (On-Grid)
+            #  1 - Plant with PV inverter and battery (Energy Storage)
             #  2 - ???
             #  3 - Plant with battery only
             
@@ -1731,7 +1731,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
                     else:
                         self._attr_extra_state_attributes[B_B_LOAD] = None
 
-                    if "batteryDirection" in kit and kit["gridDirection"] is not None:
+                    if "batteryDirection" in kit and kit["batteryDirection"] is not None:
                         if kit["batteryDirection"] == 0:
                             self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
                         elif kit["batteryDirection"] == 1:
@@ -1888,6 +1888,8 @@ class ESolarSensorBatteryEntity(ESolarBattery):
                                     self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
                                 elif battery["unitOfTemperature"] == "K":
                                     self._attr_native_unit_of_measurement = UnitOfTemperature.KELVIN
+                            if self._property == 'batSoh' or self._property == 'batSoc':
+                                self._attr_native_value = min(100.0, max(0.0, self._attr_native_value))
 
                         if self._add_attributes is not None:
                             copy = battery.copy()

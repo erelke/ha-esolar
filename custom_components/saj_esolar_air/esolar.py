@@ -335,7 +335,6 @@ def web_get_plant_details(region, session, plant_info):
         raise ValueError("Missing session identifier trying to obain plants")
 
     try:
-        device_list = []
         for plant in plant_info["plantList"]:
             data = {
                 "plantUid": plant["plantUid"],
@@ -362,8 +361,6 @@ def web_get_plant_details(region, session, plant_info):
 
             plant_detail = response.json()
             plant.update(plant_detail["data"])
-            for device in plant_detail["data"]["deviceSnList"]:
-                device_list.append(device)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -393,10 +390,14 @@ def web_get_plant_statistics(region, session, plant_info):
             }
 
             if len(plant["deviceSnList"]) > 1:
+                added = False
                 for device in plant["devices"]:
                     if "isMasterFlag" in device and device["isMasterFlag"] == 1:
                         data["deviceSn"] = device["deviceSn"]
+                        added = True
                         break
+                if not added:
+                    data["deviceSn"] = plant['deviceSnList'][0]
 
             if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
                 #if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
