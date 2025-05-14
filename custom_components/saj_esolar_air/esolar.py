@@ -20,7 +20,6 @@ VERBOSE_DEBUG = False
 
 if BASIC_TEST:
     from .esolar_static_test import (
-        get_esolar_data_static_h1_r5,
         web_get_plant_static_h1_r5,
         get_esolar_data_static_file
     )

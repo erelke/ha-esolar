@@ -1588,7 +1588,8 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
         self._attr_extra_state_attributes = {
             P_NAME: None,
             P_UID: None,
-            B_GRID_DIRECT: None
+            B_GRID_DIRECT: None,
+            B_DIRECTION: None
         }
 
     def process_data(self):
@@ -1630,6 +1631,18 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
                     self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
             else:
                 self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
+
+            if "batteryDirection" in plant and plant["batteryDirection"] is not None:
+                if plant["batteryDirection"] == 0:
+                    self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
+                elif plant["batteryDirection"] == 1:
+                    self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
+                elif plant["batteryDirection"] == -1:
+                    self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                else:
+                    self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
+            else:
+                self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
 
 
 class ESolarInverterBatterySoC(ESolarDevice):
@@ -1718,21 +1731,27 @@ class ESolarInverterBatterySoC(ESolarDevice):
                     else:
                         self._attr_extra_state_attributes[B_B_LOAD] = None
 
-                    if kit["batteryDirection"] == 0:
-                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
-                    elif kit["batteryDirection"] == 1:
-                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
-                    elif kit["batteryDirection"] == -1:
-                        self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                    if "batteryDirection" in kit and kit["gridDirection"] is not None:
+                        if kit["batteryDirection"] == 0:
+                            self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_STB
+                        elif kit["batteryDirection"] == 1:
+                            self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_DIS
+                        elif kit["batteryDirection"] == -1:
+                            self._attr_extra_state_attributes[B_DIRECTION] = B_DIR_CH
+                        else:
+                            self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
                     else:
                         self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
 
-                    if kit["deviceStatisticsData"]["gridDirection"] == 1:
-                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
-                    elif kit["deviceStatisticsData"]["gridDirection"] == -1:
-                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
-                    elif kit["deviceStatisticsData"]["gridDirection"] == 0:
-                        self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
+                    if "gridDirection" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["gridDirection"] is not None:
+                        if kit["deviceStatisticsData"]["gridDirection"] == 1:
+                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
+                        elif kit["deviceStatisticsData"]["gridDirection"] == -1:
+                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
+                        elif kit["deviceStatisticsData"]["gridDirection"] == 0:
+                            self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
+                        else:
+                            self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
                     else:
                         self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
 
