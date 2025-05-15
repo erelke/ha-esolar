@@ -1694,8 +1694,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
             B_TOTAL_DISCHARGE_E: None,
         }
 
-    async def async_update(self) -> None:
-        """Get the latest data and updates the states."""
+    def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
