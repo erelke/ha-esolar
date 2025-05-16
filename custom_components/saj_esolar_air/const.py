@@ -156,3 +156,4 @@ EH_TODAY = 'Today equivalent hours'
 EH_TOTAL = 'Total equivalent hours'
 MODULE_SN = 'Module serial number'
 MODULE_SIGN = 'Module signal strength (dBm)'
+ALARM_LIST = "Alarm list"

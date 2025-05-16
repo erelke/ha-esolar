@@ -9,6 +9,7 @@ import random
 import re
 import time
 from datetime import timedelta, datetime
+from zoneinfo import ZoneInfo
 
 ### 1. Signing query params
 
@@ -108,9 +109,15 @@ def split_camel_case(s):
     words = re.findall(r'[A-Z][a-z]*|[a-z]+', s)  # Felbontás kis- és nagybetűkre
     return ' '.join(word.capitalize() for word in words)
 
-def extract_date(date_str):
+def extract_date(date_str, timezone = None):
     try:
-        date_obj = datetime.strptime(date_str + " " + time.strftime('%z'),"%Y-%m-%d %H:%M:%S %z")
+        date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
+        if timezone:
+            if isinstance(timezone, str):  # Ha stringként adod meg az időzónát
+                timezone = ZoneInfo(timezone)
+            date_obj = date_obj.replace(tzinfo=timezone)
+        else:
+            date_obj = datetime.strptime(date_str + " " + time.strftime('%z'), "%Y-%m-%d %H:%M:%S %z")
     except ValueError:
         try:
             date_obj =  datetime.strptime(date_str + " " + time.strftime('%z'), "%d/%m/%Y %H:%M:%S %z")
@@ -129,6 +136,13 @@ def extract_date(date_str):
         return date_obj
     else:
         return None
+
+def is_today(date_string, date_format="%Y-%m-%d %H:%M:%S"):
+    try:
+        date_obj = datetime.strptime(date_string, date_format).date()
+        return date_obj == datetime.today().date()
+    except ValueError:
+        return False
 
 ### other (unused) methods
 

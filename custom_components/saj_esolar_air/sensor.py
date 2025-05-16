@@ -75,7 +75,7 @@ from .const import (
     P_UNKNOWN,
     B_EXPORT,
     B_IMPORT,
-    P_TODAY_ALARM_NUM,
+    P_TODAY_ALARM_NUM, ALARM_LIST,
     P_GRID_AC1,
     P_GRID_AC2,
     P_GRID_AC3, I_TODAY, I_YESTERDAY, I_MONTH, I_LAST_MONTH, I_TOTAL, EH_TODAY, EH_TOTAL, I_PC,
@@ -913,17 +913,18 @@ class ESolarSensorPlantLastUploadTime(ESolarPlant):
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
+                timezone = None
+                if "timeZone" in plant and plant["timeZone"] is not None:
+                    timezone = plant["timeZone"]
+
                 if "dataTime" in plant and plant["dataTime"] is not None:
-                    self._attr_native_value = extract_date(plant["dataTime"])
-
-                if self._attr_native_value is None and "updateDate" in plant and plant["updateDate"] is not None:
-                    self._attr_native_value = extract_date(plant["updateDate"])
-
-                if self._attr_native_value is None and "dataTime" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["dataTime"] is not None:
-                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["dataTime"])
-
-                if self._attr_native_value is None and "updateDate" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["updateDate"] is not None:
-                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["updateDate"])
+                    self._attr_native_value = extract_date(plant["dataTime"], timezone)
+                elif self._attr_native_value is None and "updateDate" in plant and plant["updateDate"] is not None:
+                    self._attr_native_value = extract_date(plant["updateDate"], timezone)
+                elif self._attr_native_value is None and "dataTime" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["dataTime"] is not None:
+                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["dataTime"], timezone)
+                elif self._attr_native_value is None and "updateDate" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["updateDate"] is not None:
+                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["updateDate"], timezone)
 
 
 class ESolarSensorPlantTodayEquivalentHours(ESolarPlant):
@@ -1021,7 +1022,8 @@ class ESolarSensorInverterTodayAlarmNum(ESolarDevice):
         self._attr_native_value = 0
 
         self._attr_extra_state_attributes = {
-            P_TODAY_ALARM_NUM : None
+            P_TODAY_ALARM_NUM : None,
+            ALARM_LIST : None,
         }
 
     def process_data(self):
@@ -1029,14 +1031,15 @@ class ESolarSensorInverterTodayAlarmNum(ESolarDevice):
             if plant["plantName"] == self._plant_name:
                 # Setup static attributes
                 self._attr_available = True
-                self._attr_extra_state_attributes[P_TODAY_ALARM_NUM] = plant["todayAlarmNum"]
+                self._attr_extra_state_attributes[P_TODAY_ALARM_NUM] = plant["todayAlarmNum"] if "todayAlarmNum" in plant else 0
 
                 if "devices" not in plant or plant["devices"] is None:
                     continue
                 for kit in plant["devices"]:
                     if kit["deviceSn"] == self._inverter_sn:
                         # Setup state
-                        self._attr_native_value = kit["todayAlarmNum"]
+                        self._attr_native_value = kit["todayAlarmNum"] if "todayAlarmNum" in kit else 0
+                        self._attr_extra_state_attributes[ALARM_LIST] = kit["alarmList"] if "alarmList" in kit else []
 
 
 class ESolarInverterEnergyTotal(ESolarDevice):

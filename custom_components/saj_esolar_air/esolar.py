@@ -7,7 +7,7 @@ import hashlib
 import os
 import requests
 from dateutil.relativedelta import relativedelta
-from .elekeeper import calc_signature, encrypt, generatkey
+from .elekeeper import calc_signature, encrypt, generatkey, is_today
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,6 +83,8 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
         web_get_device_info(region, session, plant_info)
         web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
+        web_get_alarm_list(region, session, plant_info, 1)
+        web_get_alarm_list(region, session, plant_info, 3)
 
         for plant in plant_info["plantList"]:
             try:
@@ -897,6 +899,78 @@ def web_get_ems_list(region, session, plant_info):
                 return
 
             plant.update({"emsModules": ems_list})
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_alarm_list(region, session, plant_info, state: int = 3):
+    """Retrieve a plant alarm list from the WEB Portal"""
+
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain alarms list")
+
+    try:
+        for plant in plant_info["plantList"]:
+            data = {
+                'appProjectName': 'elekeeper',
+                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                'lang': 'en',
+                'timeStamp': int(time.time() * 1000),
+                'random': generatkey(32),
+                'clientId': 'esolar-monitor-admin',
+            }
+            now = datetime.datetime.now()
+            start = now - datetime.timedelta(days=3)
+
+            payload = {
+                "pageNo": 1,
+                "pageSize": 10,
+                "alarmCommonState": state,              # 1-pending, 2-?, 3-closed, 4-manual close
+                "orderByIndex": 1,
+                "plantUid": plant["plantUid"],
+                "queryStartDate": start.strftime("%Y-%m-%d"),
+                "queryEndDate": now.strftime("%Y-%m-%d"),
+                "searchOfficeIdArr": 1,
+            }
+
+            signed = calc_signature(data)
+
+            response = session.post(
+                base_url(region) + "/alarm/device/userAlarmPage",
+                data = payload | signed,
+                timeout=WEB_TIMEOUT
+            )
+
+            response.raise_for_status()
+
+            if response.status_code != 200:
+                raise ValueError(f"Get device {plant["plantUid"]} alarm list error: {response.status_code}")
+
+            answer = response.json()
+            if 'data' in answer and 'list' in answer['data'] and len(answer['data']['list']) > 0:
+                alarm_list = answer["data"]["list"]
+                for alarm in alarm_list:
+                    if "alarmStartTime" in alarm and alarm["alarmStartTime"] is not None and is_today(alarm["alarmStartTime"]):
+                        plant["todayAlarmNum"] = plant["todayAlarmNum"] + 1
+                        for device in plant["devices"]:
+                            if device["deviceSn"] == alarm["deviceSn"]:
+                                device["todayAlarmNum"] = device["todayAlarmNum"] + 1
+                                if "alarmList" not in device:
+                                    device["alarmList"] = []
+                                del alarm["deviceSn"]
+                                del alarm["deviceSnType"]
+                                del alarm["plantUid"]
+                                del alarm["plantName"]
+                                del alarm["plantCountry"]
+
+                                device["alarmList"].append(alarm)
+                                break
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
