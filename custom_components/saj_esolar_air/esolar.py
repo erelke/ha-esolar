@@ -119,6 +119,7 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
 
     return plant_info
 
+
 def esolar_web_autenticate(region, username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
@@ -376,7 +377,7 @@ def web_get_plant_details(region, session, plant_info):
 def web_get_plant_statistics(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plants")
 
     try:
          for plant in plant_info["plantList"]:
@@ -391,8 +392,8 @@ def web_get_plant_statistics(region, session, plant_info):
                 'clientId': 'esolar-monitor-admin',
             }
 
+            added = False
             if len(plant["deviceSnList"]) > 1:
-                added = False
                 for device in plant["devices"]:
                     if "isMasterFlag" in device and device["isMasterFlag"] == 1:
                         data["deviceSn"] = device["deviceSn"]
@@ -407,8 +408,9 @@ def web_get_plant_statistics(region, session, plant_info):
                     data["deviceSn"] = plant['deviceSnList'][0]
             elif "hasH2Device" in plant and plant["hasH2Device"] == 1 and plant["devices"][0]["deviceModel"].startswith("H2-"):
                 data["deviceSn"] = plant["devices"][0]["deviceSn"]
+                added = True
 
-            if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
+            if not added and "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
                 #if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
                 data["emsSn"] = plant["moduleSnList"][0]
 
