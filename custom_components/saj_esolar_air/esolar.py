@@ -399,7 +399,14 @@ def web_get_plant_statistics(region, session, plant_info):
                         added = True
                         break
                 if not added:
+                    for device in plant["devices"]:
+                        if device["deviceModel"].startswith("H2-"):
+                            data["deviceSn"] = device["deviceSn"]
+                            added = True
+                if not added:
                     data["deviceSn"] = plant['deviceSnList'][0]
+            elif "hasH2Device" in plant and plant["hasH2Device"] == 1 and plant["devices"][0]["deviceModel"].startswith("H2-"):
+                data["deviceSn"] = plant["devices"][0]["deviceSn"]
 
             if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
                 #if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
