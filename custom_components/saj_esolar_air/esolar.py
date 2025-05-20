@@ -7,7 +7,7 @@ import hashlib
 import os
 import requests
 from dateutil.relativedelta import relativedelta
-from .elekeeper import calc_signature, encrypt, generatkey, is_today
+from .elekeeper import calc_signature, encrypt, generatkey, is_today, prepare_data_for_query
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -381,6 +381,8 @@ def web_get_plant_statistics(region, session, plant_info):
 
     try:
          for plant in plant_info["plantList"]:
+            if plant.get("type") == 2:
+                 continue
 
             data = {
                 "plantUid": plant["plantUid"],
@@ -392,27 +394,7 @@ def web_get_plant_statistics(region, session, plant_info):
                 'clientId': 'esolar-monitor-admin',
             }
 
-            added = False
-            if len(plant["deviceSnList"]) > 1:
-                for device in plant["devices"]:
-                    if "isMasterFlag" in device and device["isMasterFlag"] == 1:
-                        data["deviceSn"] = device["deviceSn"]
-                        added = True
-                        break
-                if not added:
-                    for device in plant["devices"]:
-                        if device["deviceModel"].startswith("H2-"):
-                            data["deviceSn"] = device["deviceSn"]
-                            added = True
-                if not added:
-                    data["deviceSn"] = plant['deviceSnList'][0]
-            elif "hasH2Device" in plant and plant["hasH2Device"] == 1 and plant["devices"][0]["deviceModel"].startswith("H2-"):
-                data["deviceSn"] = plant["devices"][0]["deviceSn"]
-                added = True
-
-            if not added and "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
-                #if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
-                data["emsSn"] = plant["moduleSnList"][0]
+            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
 
             signed = calc_signature(data)
 
@@ -624,6 +606,9 @@ def web_get_plant_overview(region, session, plant_info):
         timestamp_one_month_later_ms = int(one_month_later.timestamp() * 1000)
 
         for plant in plant_info["plantList"]:
+            if plant.get("type") == 0 and (plant.get("isInstallEms") == 1 or plant.get("isInstallLoraMeter") == 1):
+                continue
+
             data = {
                 "plantUid": plant["plantUid"],
                 "refresh": timestamp_one_month_later_ms,
@@ -634,6 +619,8 @@ def web_get_plant_overview(region, session, plant_info):
                 'random': generatkey(32),
                 'clientId': 'esolar-monitor-admin',
             }
+
+            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
 
             signed = calc_signature(data)
 
@@ -682,9 +669,7 @@ def web_get_plant_flow_data(region, session, plant_info):
                 'clientId': 'esolar-monitor-admin',
             }
 
-            if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
-                for moduleSn in plant["moduleSnList"]:
-                    data.update({"emsSn": moduleSn})
+            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
 
             signed = calc_signature(data)
 
@@ -771,7 +756,6 @@ def web_get_sec_statistics(region, session, plant_info):
                 if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
                     for moduleSn in plant["moduleSnList"]:
                         data = {
-                            "moduleSn": moduleSn,
                             "plantUid": plant["plantUid"],
                             "chartDateType": 5,
                             "chartDay": datetime.date.today().strftime("%Y-%m-%d"),
@@ -783,10 +767,20 @@ def web_get_sec_statistics(region, session, plant_info):
                             'clientId': 'esolar-monitor-admin',
                         }
 
+                        if plant.get("type") == 0 and plant.get("isInstallEms") == 1:
+                            url = "/monitor/plant/chart/getSecSelfUseEnergyData"
+                            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
+                        elif plant.get("type") == 1 or (plant.get("type") == 0 and plant.get("isInstallMeter") != 0):
+                            url = "/monitor/home/getSecSelfUseEnergyData"
+                            data["moduleSn"] = moduleSn
+                        else:
+                            url = "/monitor/plant/chart/getSelfUseEnergyData"
+                            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
+
                         signed = calc_signature(data)
 
                         response = session.get(
-                            base_url(region) + "/monitor/plant/chart/getSecSelfUseEnergyData",
+                            base_url(region) + url,
                             params = signed,
                             timeout=WEB_TIMEOUT
                         )

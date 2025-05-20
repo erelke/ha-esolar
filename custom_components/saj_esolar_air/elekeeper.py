@@ -144,6 +144,52 @@ def is_today(date_string, date_format="%Y-%m-%d %H:%M:%S"):
     except ValueError:
         return False
 
+def set_energy_flow_type(plant):
+    if plant.get("ifCMPDevice") == 1 and plant.get("ifInstallPv") == 1:
+        plant["flowType"] = "CMP"
+        return True
+    elif plant.get("ifCHDevice") == 1 and plant.get("ifC6Device") == 1 and plant.get("isInstallEms") == 1:
+        plant["flowType"] = "C6"
+        return True
+    elif plant.get("ifCHDevice") == 1:
+        plant["flowType"] = "CH2"
+        return True
+    elif plant.get("hasH2Device") == 1:
+        plant["flowType"] = "H2"
+        return True
+    elif plant.get("isInstallLoraMeter") == 1:
+        plant["flowType"] = "Lora"
+        return True
+
+    return False
+
+def prepare_data_for_query( plant, data ):
+    """SAJ eSolar Helper Function - A data-t előfeltétellegesen előzik, és a data-t a query-be kell írni."""
+
+    if plant.get("queryDeviceDataType", 1) == 1:
+        added = False
+        if len(plant["deviceSnList"]) > 1:
+            for device in plant["devices"]:
+                if "isMasterFlag" in device and device["isMasterFlag"] == 1:
+                    data["deviceSn"] = device["deviceSn"]
+                    added = True
+                    break
+            if not added:
+                for device in plant["devices"]:
+                    if device["deviceModel"].startswith("H"):
+                        data["deviceSn"] = device["deviceSn"]
+                        added = True
+            if not added:
+                data["deviceSn"] = plant['deviceSnList'][0]
+        elif plant.get("hasH2Device", 1) == 1 or plant["devices"][0]["deviceModel"].startswith("H"):
+            data["deviceSn"] = plant["devices"][0]["deviceSn"]
+
+    elif plant.get("queryDeviceDataType", 1) == 2:
+        if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
+            # if "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
+            data["emsSn"] = plant["moduleSnList"][0]
+
+
 ### other (unused) methods
 
 def add_months(sourcedate, months):

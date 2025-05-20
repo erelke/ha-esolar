@@ -991,14 +991,18 @@ class ESolarSensorInverterPeakPower(ESolarDevice):
                 self._attr_available = True
                 # Setup state
                 if plant["type"] == 0:
-                    peak_power = self._attr_native_value or self.coordinator.hass.states.get(self._attr_unique_id) or float(0.0)
+                    if self._last_updated is not None and self._last_updated.date() == datetime.now().date():
+                        peak_power = self._attr_native_value or self.coordinator.hass.states.get(self._attr_unique_id) or float(0.0)
+                    else:
+                        peak_power = float(0.0)
                     for kit in plant["devices"]:
                         if (kit['deviceSn'] == self._inverter_sn
                                 and kit['deviceStatisticsData'] is not None
                                 and kit['deviceStatisticsData']['powerNow'] is not None):
                             peak_power = max(peak_power, float(kit['deviceStatisticsData']['powerNow']))
-                    self._attr_native_value = float(peak_power)
-
+                            if self._attr_native_value != float(peak_power):
+                                self._last_updated = datetime.now()
+                                self._attr_native_value = float(peak_power)
 
 
 class ESolarSensorInverterTodayAlarmNum(ESolarDevice):
