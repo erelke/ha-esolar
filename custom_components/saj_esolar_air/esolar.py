@@ -534,7 +534,7 @@ def web_get_device_raw_data(region, session, plant_info):
     try:
         for plant in plant_info["plantList"]:
             for device in plant["devices"]:
-                if device.get("type", 0) == 0:
+                if device.get("type", 0) != 0:
                     continue
 
                 data = {
