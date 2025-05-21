@@ -181,7 +181,7 @@ def prepare_data_for_query( plant, data ):
                         added = True
             if not added:
                 data["deviceSn"] = plant['deviceSnList'][0]
-        elif plant.get("hasH2Device", 1) == 1 or plant["devices"][0]["deviceModel"].startswith("H"):
+        else:
             data["deviceSn"] = plant["devices"][0]["deviceSn"]
 
     elif plant.get("queryDeviceDataType", 1) == 2:

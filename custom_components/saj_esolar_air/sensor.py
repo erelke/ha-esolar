@@ -98,6 +98,8 @@ ICON_GRID_IMPORT = "mdi:transmission-tower-import"
 ICON_THERMOMETER = "mdi:thermometer"
 ICON_UPDATE = "mdi:update"
 ICON_ALARM = "mdi:alarm-light"
+ICON_CURRENT_DC = "mdi:current-dc"
+ICON_CURRENT_AC = "mdi:current-ac"
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -132,41 +134,40 @@ async def async_setup_entry(
             plant_entities.append(
                 ESolarSensorPlant(coordinator, plant["plantName"], plant["plantUid"], use_pv_grid_attributes)
             )
-            # Type enum:
-            #  0 - plant with PV inverter only (On-Grid)
-            #  1 - Plant with PV inverter and battery (Energy Storage)
+            # Plant type enum:
+            #  0 - On-grid - plant with PV inverter only (device type: 0, On-grid inverter)
+            #  1 - Energy Storage - Plant with PV inverter and external battery (device type: 1, Storage inverter)
             #  2 - ???
-            #  3 - Plant with battery only
+            #  3 - AC Coupling - Plant with PV inverter with builtin battery (device type: 2, AC Coupling Inverter)
             
-            if plant["type"] in [0,1,2]:
-                _LOGGER.debug(
-                    "Setting up ESolarSensorPlantTotalEnergy sensor for %s",
-                    plant["plantName"],
-                )
-                plant_entities.append(
-                    ESolarSensorPlantTotalEnergy( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantTodayEnergy( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantMonthEnergy( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantYearEnergy( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantPeakPower( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantLastUploadTime( coordinator, plant["plantName"], plant["plantUid"] )
-                )
-                plant_entities.append(
-                    ESolarSensorPlantTodayEquivalentHours( coordinator, plant["plantName"], plant["plantUid"] )
-                )
+            _LOGGER.debug(
+                "Setting up ESolarSensorPlantTotalEnergy sensor for %s",
+                plant["plantName"],
+            )
+            plant_entities.append(
+                ESolarSensorPlantTotalEnergy( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantTodayEnergy( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantMonthEnergy( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantYearEnergy( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantPeakPower( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantLastUploadTime( coordinator, plant["plantName"], plant["plantUid"] )
+            )
+            plant_entities.append(
+                ESolarSensorPlantTodayEquivalentHours( coordinator, plant["plantName"], plant["plantUid"] )
+            )
 
 
-            if plant["type"] in [1,2,3] and (("hasBattery" in plant and plant["hasBattery"] == 1) or "hasBattery" not in plant):
+            if plant["type"] in [1,3] and (("hasBattery" in plant and plant["hasBattery"] == 1) or "hasBattery" not in plant):
                 sources = ["todayBuyEnergy", "todayChargeEnergy", "todayDisChargeEnergy", "todayLoadEnergy", "todaySellEnergy",
                            "totalBuyEnergy", "totalChargeEnergy", "totalDisChargeEnergy", "totalLoadEnergy", "totalSellEnergy",
                            "yearBuyEnergy", "yearBatChgEnergy", "yearBatDischgEnergy", "yearLoadEnergy", "yearSellEnergy",
@@ -183,7 +184,7 @@ async def async_setup_entry(
                     )
                 )
 
-            elif plant["type"] in [0,1,2] and "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
+            elif plant["type"] in [0,1] and "isInstallMeter" in plant and plant["isInstallMeter"] == 1:
                 sources = ["todayBuyEnergy", "todayLoadEnergy", "todaySellEnergy",
                            "totalBuyEnergy", "totalLoadEnergy", "totalSellEnergy",
                            "yearBuyEnergy", "yearLoadEnergy", "yearSellEnergy",
@@ -209,7 +210,7 @@ async def async_setup_entry(
                     )
 
 
-            if use_inverter_sensors and plant["type"] in [0,1,2]:
+            if use_inverter_sensors:
                 for device in plant["deviceSnList"]:
                     _LOGGER.debug(
                         "Setting up ESolarInverterEnergyTotal sensor for %s and device %s",
@@ -246,6 +247,10 @@ async def async_setup_entry(
                                     device_entities.append(
                                         ESolarInverterPW(coordinator, plant["plantName"], plant["plantUid"], device, pv['pvNo'])
                                     )
+                            if kit.get("deviceTemp", 0) != 0 or kit.get("type", 0) == 0:
+                                device_entities.append(
+                                    ESolarInverterTemperature(coordinator, plant["plantName"], plant["plantUid"], device)
+                                )
 
                     device_entities.append(
                         ESolarInverterEnergyToday(coordinator, plant["plantName"], plant["plantUid"], device)
@@ -254,16 +259,13 @@ async def async_setup_entry(
                         ESolarInverterEnergyMonth(coordinator, plant["plantName"], plant["plantUid"], device)
                     )
                     device_entities.append(
-                        ESolarInverterTemperature(coordinator, plant["plantName"], plant["plantUid"], device)
-                    )
-                    device_entities.append(
                         ESolarSensorInverterTodayAlarmNum(coordinator, plant["plantName"], plant["plantUid"], device)
                     )
                     device_entities.append(
                         ESolarSensorInverterPeakPower( coordinator, plant["plantName"], plant["plantUid"], device)
                     )
 
-            if use_inverter_sensors and plant["type"] in [1,2,3] :
+            if use_inverter_sensors and plant["type"] in [1,3] :
                 for device_sn in plant["deviceSnList"]:
                     for device in plant["devices"]:
                         if device["deviceSn"] == device_sn:
@@ -324,9 +326,45 @@ async def async_setup_entry(
                         bat_entities.append(
                             ESolarSensorBatteryEntity( coordinator, plant["plantName"], plant["plantUid"], battery["batSn"], "batTemperature")
                         )
-                        bat_entities.append(
-                            ESolarSensorBatteryEntity( coordinator, plant["plantName"], plant["plantUid"], battery["batSn"], "batSoh")
-                        )
+                        if battery.get("type", 1) == 2:
+                            _LOGGER.debug(
+                                "Setting up ESolarSensorBatteryEntities for %s and builtin battery %s",
+                                plant["plantName"],
+                                battery["batSn"],
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "batVoltage")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "batCurrent")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "batPower")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "todayBatChgEnergy")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "todayBatDisEnergy")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "totalBatChgEnergy")
+                            )
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "totalBatDisEnergy")
+                            )
+                        else:
+                            bat_entities.append(
+                                ESolarSensorBatteryEntity(coordinator, plant["plantName"], plant["plantUid"],
+                                                          battery["batSn"], "batSoh")
+                            )
 
     async_add_entities(plant_entities, True)
     async_add_entities(device_entities, True)
@@ -344,7 +382,7 @@ class ESolarPlant(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._plant_name = plant_name
         self._plant_uid = plant_uid
 
-        self._device_name: None | str = plant_name
+        self._device_name: None | str = f"Plant {plant_name}"
         self._device_model: None | str = PLANT_MODEL
 
     @property
@@ -404,7 +442,7 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._plant_uid = plant_uid
         self._inverter_sn = inverter_sn
 
-        self._device_name: None | str = inverter_sn
+        self._device_name: None | str = f"Inverter {inverter_sn}"
         self._device_model: None | str = DEVICE_MODEL
         self._hw_version: None | str = None
         self._sw_version: None | str = None
@@ -422,7 +460,7 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
                             self._device_model = device["deviceModel"] or None
                             self._hw_version = device["masterMCUFw"] or None
                             self._sw_version = device["displayFw"] or None
-                            self._device_name = device["aliases"] or device["deviceSn"] or None
+                            #self._device_name = f"Inverter {device["aliases"]}" or f"Inverter {device["deviceSn"]}" or None
                             self._device_pc = device["devicePc"] or None
 
         device_info = DeviceInfo(
@@ -467,7 +505,7 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._plant_uid = plant_uid
         self._module_sn = module_sn
 
-        self._device_name: None | str = module_sn
+        self._device_name: None | str = f"Meter {module_sn}"
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
 
@@ -525,7 +563,7 @@ class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._plant_uid = plant_uid
         self._bat_sn = bat_sn
 
-        self._device_name: None | str = bat_sn
+        self._device_name: None | str = f"Battery {bat_sn}"
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
         self._hw_version: None | str = None
@@ -604,7 +642,7 @@ class ESolarEMS(CoordinatorEntity[ESolarCoordinator], SensorEntity):
                 if "emsModules" in plant and plant["emsModules"] is not None:
                     for ems in plant["emsModules"]:
                         if ems["emsModuleSn"] == self._ems_sn:
-                            self._device_name = ems["emsModuleName"] if ems["emsModuleName"] is not None and ems["emsModuleName"] != '--' else ems["emsModuleSn"] or None
+                            self._device_name = ems["emsModuleName"] if ems["emsModuleName"] is not None and ems["emsModuleName"] != '--' else f"EMS {ems['emsModuleSn']}" or None
                             self._device_model = ems["emsModel"] or None
                             self._sw_version = ems["firmwareVersion"] or None
                             self._hw_version = ems["hardwareVersion"] or None
@@ -886,7 +924,7 @@ class ESolarSensorPlantPeakPower(ESolarPlant):
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
-                self._attr_native_value = float(plant["peakPower"])
+                self._attr_native_value = float(plant.get("peakPower",0))
 
 
 class ESolarSensorPlantLastUploadTime(ESolarPlant):
@@ -990,19 +1028,18 @@ class ESolarSensorInverterPeakPower(ESolarDevice):
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
-                if plant["type"] == 0:
-                    if self._last_updated is not None and self._last_updated.date() == datetime.now().date():
-                        peak_power = self._attr_native_value or self.coordinator.hass.states.get(self._attr_unique_id) or float(0.0)
-                    else:
-                        peak_power = float(0.0)
-                    for kit in plant["devices"]:
-                        if (kit['deviceSn'] == self._inverter_sn
-                                and kit['deviceStatisticsData'] is not None
-                                and kit['deviceStatisticsData']['powerNow'] is not None):
-                            peak_power = max(peak_power, float(kit['deviceStatisticsData']['powerNow']))
-                            if self._attr_native_value != float(peak_power):
-                                self._last_updated = datetime.now()
-                                self._attr_native_value = float(peak_power)
+                if self._last_updated is not None and self._last_updated.date() == datetime.now().date():
+                    peak_power = self._attr_native_value or self.coordinator.hass.states.get(self._attr_unique_id) or float(0.0)
+                else:
+                    peak_power = float(0.0)
+                for kit in plant["devices"]:
+                    if (kit['deviceSn'] == self._inverter_sn
+                            and kit['deviceStatisticsData'] is not None
+                            and kit['deviceStatisticsData']['powerNow'] is not None):
+                        peak_power = max(peak_power, float(kit['deviceStatisticsData']['powerNow']))
+                        if self._attr_native_value != float(peak_power):
+                            self._last_updated = datetime.now()
+                            self._attr_native_value = float(peak_power)
 
 
 class ESolarSensorInverterTodayAlarmNum(ESolarDevice):
@@ -1290,7 +1327,7 @@ class ESolarInverterPC(ESolarDevice):
 
         self._pv_string = pv_string
 
-        self._attr_icon = ICON_POWER
+        self._attr_icon = ICON_CURRENT_DC
         self._attr_name = f"Inverter {inverter_sn} PC{pv_string}"
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
@@ -1480,7 +1517,7 @@ class ESolarInverterGC(ESolarDevice):
         self._attr_unique_id = f"GC{phase}{letter}_{inverter_sn}" #typo :( correct: GC1r_
 
         self._phase = phase
-        self._attr_icon = ICON_GRID_EXPORT
+        self._attr_icon = ICON_CURRENT_AC
         self._attr_name = f"Inverter {inverter_sn} GC{phase}{letter}"
         self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
         self._attr_device_class = SensorDeviceClass.CURRENT
@@ -1861,18 +1898,41 @@ class ESolarSensorBatteryEntity(ESolarBattery):
         self._attr_unique_id = f"Solar_battery_{self._bat_sn}_{prop}"
         self._property = prop
 
-        self._attr_name = f"Solar battery {self._bat_sn} {split_camel_case(prop)}"
+        self._attr_name = f"Battery {self._bat_sn} {split_camel_case(prop)}"
         self._attr_native_value = None
         self._add_attributes = add_attributes
 
         self._attr_state_class = SensorStateClass.MEASUREMENT
 
-        if prop == 'batSoh' or prop == 'batSoc':
+        if prop == 'batSoc':
             self._attr_native_unit_of_measurement = PERCENTAGE
             self._attr_device_class = SensorDeviceClass.BATTERY
         elif prop == 'batTemperature':
             self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
             self._attr_device_class = SensorDeviceClass.TEMPERATURE
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == 'batPower':
+            self._attr_icon = ICON_POWER
+            self._attr_native_unit_of_measurement = UnitOfPower.WATT
+            self._attr_device_class = SensorDeviceClass.POWER
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop.endswith('Energy'):
+            self._attr_icon = ICON_METER
+            self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+            self._attr_device_class = SensorDeviceClass.ENERGY
+            self._attr_state_class = SensorStateClass.TOTAL
+        elif prop == "batCurrent":
+            self._attr_icon = ICON_CURRENT_DC
+            self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
+            self._attr_device_class = SensorDeviceClass.CURRENT
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == "batVoltage":
+            self._attr_icon = ICON_LIGHTNING
+            self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
+            self._attr_device_class = SensorDeviceClass.VOLTAGE
+            self._attr_state_class = SensorStateClass.MEASUREMENT
             self._attr_entity_category = EntityCategory.DIAGNOSTIC
 
     def process_data(self):
@@ -1886,7 +1946,13 @@ class ESolarSensorBatteryEntity(ESolarBattery):
                             # Setup static attributes
                             self._attr_available = True
                             # Setup state
-                            self._attr_native_value = float(extract_number(battery[self._property])) * (100 if self._property == 'batSoh' else 1)
+                            if self._property == 'batSoh' and battery.get("type", 1) == 2:
+                                self._attr_native_value = battery.get(self._property)
+                            elif isinstance(battery[self._property], float):
+                                self._attr_native_value = battery[self._property] * (100 if self._property == 'batSoh' else 1)
+                            else:
+                                self._attr_native_value = float(extract_number(battery[self._property])) * (100 if self._property == 'batSoh' else 1)
+
                             if self._property == "batTemperature" and "unitOfTemperature" in battery and battery["unitOfTemperature"] is not None:
                                 if battery["unitOfTemperature"] == "℃" or battery["unitOfTemperature"] == "C":
                                     self._attr_native_unit_of_measurement = UnitOfTemperature.CELSIUS
@@ -1894,12 +1960,15 @@ class ESolarSensorBatteryEntity(ESolarBattery):
                                     self._attr_native_unit_of_measurement = UnitOfTemperature.FAHRENHEIT
                                 elif battery["unitOfTemperature"] == "K":
                                     self._attr_native_unit_of_measurement = UnitOfTemperature.KELVIN
-                            if self._property == 'batSoh' or self._property == 'batSoc':
+                            if (self._property == 'batSoh' and battery.get("type", 0) != 2) or self._property == 'batSoc':
                                 self._attr_native_value = min(100.0, max(0.0, self._attr_native_value))
 
                         if self._add_attributes is not None:
                             copy = battery.copy()
-                            to_remove = ["deviceSn", "batSn", "bmsHardwareVersion", "bmsSoftwareVersion", "plantName", "plantUid", "batSoc", "batTemperature", "batSoh"]
+                            to_remove = ["deviceSn", "batSn", "bmsHardwareVersion", "bmsSoftwareVersion", "plantName", "plantUid", "batSoc", "batTemperature",
+                                         "solutioUrl", "todayBatChgEnergy", "todayBatDisEnergy", "totalBatChgEnergy", "totalBatDisEnergy", "showBatSoc", "showBatteryNum",
+                                         "showGroupNum", "showHeating", "showNewBatteryFlag", "enableBindPlant", "aiSavingSwitch", "EnableShowBatteryClusterRealDataBtn",
+                                         "EnableShowBatteryRealDataBtn", "EnableShowSingleVoltageBtn", "EnableShowWarranty", "IsHistory", "IsContainCluster", "IsHighVolt"]
                             for key in to_remove:
                                 if key in copy:
                                     del copy[key]

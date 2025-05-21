@@ -49,7 +49,7 @@ def _async_get_diagnostics(
     sensitive_keys = [CONF_PASSWORD, CONF_USERNAME, "latitude", "longitude", "latitudeStr", "longitudeStr", "plantUid", "address", "deviceSnList",
                       "deviceSn", "devicePc", "modulePc", "moduleSn", "userUid", "fullAddress", "ownerEmail", "moduleSnList",
                       "email", "plantId", "plantNo", "officeId", "reportId", "aliases", "identifiers", "serial_number",
-                      "emsModulePc", "emsModuleSn"]
+                      "emsModulePc", "emsModuleSn", "batSn", "bmsSn", "emsSn"]
     data = {
         "name": entry.title,
         "entry": config,

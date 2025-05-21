@@ -101,7 +101,8 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                 _LOGGER.error(
                     f"We don't have a battery for {username}: {e}"
                 )
-            web_get_batteries_data(region, session, plant_info)
+        web_get_batteries_data(region, session, plant_info)
+        web_get_device_battery_data(region, session, plant_info)
 
         plant_info['status'] = 'success'
         plant_info['stamp'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -533,6 +534,9 @@ def web_get_device_raw_data(region, session, plant_info):
     try:
         for plant in plant_info["plantList"]:
             for device in plant["devices"]:
+                if device.get("type", 0) == 0:
+                    continue
+
                 data = {
                     'appProjectName': 'elekeeper',
                     'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
@@ -582,7 +586,6 @@ def web_get_device_raw_data(region, session, plant_info):
                         add_data['raw_datetime'] = raw_data["datetime"]
                     else:
                         add_data['raw_datetime'] = ''
-                    add_data["raw_payload"] = payload
                     device.update(add_data)
 
     except requests.exceptions.HTTPError as errh:
@@ -845,13 +848,64 @@ def web_get_batteries_data(region, session, plant_info):
             )
 
             response.raise_for_status()
-
             if response.status_code != 200:
                 raise ValueError(f"Get plant {plant["plantName"]} battery list data error: {response.status_code}")
 
             answer = response.json()
             if 'data' in answer and answer["data"] is not None and "list" in answer["data"]:
                 plant["batteries"] = answer["data"]["list"]
+
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
+
+def web_get_device_battery_data(region, session, plant_info):
+    """Retrieve nuilt in battery data from the WEB Portal."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain battery data")
+
+    try:
+        for plant in plant_info["plantList"]:
+            for device in plant["devices"]:
+                if device.get("hasBattery",0) == 0 or device.get("type",0) != 2: #only for devices with builtin batteries
+                    continue
+
+                data = {
+                    "deviceSn": device["deviceSn"],
+                    'appProjectName': 'elekeeper',
+                    'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
+                    'lang': 'en',
+                    'timeStamp': int(time.time() * 1000),
+                    'random': generatkey(32),
+                    'clientId': 'esolar-monitor-admin',
+                }
+
+                signed = calc_signature(data)
+
+                response = session.get(
+                    base_url(region) + "/monitor/battery/getOneDeviceBatteryInfo",  #typo from SAJ
+                    params = signed,
+                    timeout=WEB_TIMEOUT
+                )
+
+                response.raise_for_status()
+                if response.status_code != 200:
+                    raise ValueError(f"Get plant {plant["plantName"]} battery list data error: {response.status_code}")
+
+                answer = response.json()
+                if 'data' in answer:
+                    del answer["data"]["baseBatteryBtnBeanList"]
+                    if "batteries" in plant and plant["batteries"] is not None:
+                        for battery in plant["batteries"]:
+                            if battery["batSn"] == device["deviceSn"]:
+                                battery.update(answer["data"])
+                    else:
+                        device.update(answer["data"])
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
