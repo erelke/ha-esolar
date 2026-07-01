@@ -4,6 +4,7 @@ import json
 import sys
 from esolar import get_esolar_data
 
+REGION = "eu"
 USER = "NAME"
 PASSWORD = "PASSWORD"
 OUTPUT_FILE = "output.txt"

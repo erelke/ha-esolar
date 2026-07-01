@@ -11,8 +11,8 @@
   "homekit": {},
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/erelke/ha-esolar/issues",
-  "requirements": [],
+  "requirements": ["pycryptodome>=3.19.0"],
   "ssdp": [],
-  "version": "2.2.14",
+  "version": "2.2.15",
   "zeroconf": []
 }

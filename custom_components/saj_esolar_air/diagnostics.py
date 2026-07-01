@@ -1,4 +1,4 @@
-"""Diagnostics support for tuya-local."""
+"""Diagnostics support for saj_esolar_air."""
 
 from __future__ import annotations
 
@@ -6,10 +6,8 @@ from typing import Any
 
 from homeassistant.components.diagnostics import REDACTED
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_HOST, CONF_REGION, CONF_PASSWORD, CONF_USERNAME
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceEntry
 
 from custom_components.saj_esolar_air import DOMAIN

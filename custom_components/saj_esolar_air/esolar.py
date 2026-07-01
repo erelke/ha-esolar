@@ -91,9 +91,12 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                 if "hasBattery" in plant and plant["hasBattery"] == 1:
                     break
                 for device in plant["devices"]:
+                    stats = device.get("deviceStatisticsData") or {}
+                    bat_pct = stats.get("batEnergyPercent")
+                    device_bat_pct = device.get("batEnergyPercent")
                     if (("hasBattery" in device and device["hasBattery"] == 1) or
-                            ("batEnergyPercent" in device["deviceStatisticsData"] and float(device["deviceStatisticsData"]["batEnergyPercent"]) > 0) or
-                            ("batEnergyPercent" in device and int(device["batEnergyPercent"]) > 0)):
+                            (bat_pct is not None and float(bat_pct) > 0) or
+                            (device_bat_pct is not None and int(device_bat_pct) > 0)):
                         device["hasBattery"] = 1
                         plant["hasBattery"] = 1
                         break
