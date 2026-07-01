@@ -82,7 +82,8 @@ from .const import (
     B_TODAY_CHARGE_E,
     B_TODAY_DISCHARGE_E,
     B_TOTAL_CHARGE_E,
-    B_TOTAL_DISCHARGE_E, DEVICE_MODEL, METER_MODEL, MODULE_SN, MODULE_SIGN
+    B_TOTAL_DISCHARGE_E, DEVICE_MODEL, METER_MODEL, MODULE_SN, MODULE_SIGN,
+    PLANT_RUNNING_STATE_OFFLINE,
 )
 
 ICON_POWER = "mdi:solar-power"
@@ -102,6 +103,16 @@ ICON_CURRENT_DC = "mdi:current-dc"
 ICON_CURRENT_AC = "mdi:current-ac"
 
 _LOGGER = logging.getLogger(__name__)
+
+_LIVE_BATTERY_PROPS = frozenset({
+    "batSoc", "batTemperature", "batPower", "batCurrent", "batVoltage",
+})
+
+
+def plant_is_offline(plant: dict) -> bool:
+    """Return True when the plant running state is offline."""
+    return plant.get("runningState") == PLANT_RUNNING_STATE_OFFLINE
+
 
 def is_float_and_not_int(num):
     return isinstance(num, float) and not isinstance(num, int)
@@ -385,6 +396,13 @@ class ESolarPlant(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._device_name: None | str = f"Plant {plant_name}"
         self._device_model: None | str = PLANT_MODEL
 
+    def _offline_blocks_live_sensor(self, plant: dict) -> bool:
+        """Mark sensor unavailable when the plant is offline."""
+        if plant_is_offline(plant):
+            self._attr_available = False
+            return True
+        return False
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device_info of the device."""
@@ -448,6 +466,13 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._sw_version: None | str = None
         self._device_pc: None | str = None
 
+    def _offline_blocks_live_sensor(self, plant: dict) -> bool:
+        """Mark sensor unavailable when the plant is offline."""
+        if plant_is_offline(plant):
+            self._attr_available = False
+            return True
+        return False
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device_info of the device."""
@@ -509,6 +534,13 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
 
+    def _offline_blocks_live_sensor(self, plant: dict) -> bool:
+        """Mark sensor unavailable when the plant is offline."""
+        if plant_is_offline(plant):
+            self._attr_available = False
+            return True
+        return False
+
     @property
     def device_info(self) -> DeviceInfo:
         """Return the device_info of the device."""
@@ -567,6 +599,13 @@ class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
         self._hw_version: None | str = None
+
+    def _offline_blocks_live_sensor(self, plant: dict) -> bool:
+        """Mark sensor unavailable when the plant is offline."""
+        if plant_is_offline(plant):
+            self._attr_available = False
+            return True
+        return False
 
     @property
     def device_info(self) -> DeviceInfo:
@@ -919,6 +958,8 @@ class ESolarSensorPlantPeakPower(ESolarPlant):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
@@ -1023,6 +1064,8 @@ class ESolarSensorInverterPeakPower(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
@@ -1243,6 +1286,8 @@ class ESolarInverterPower(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1293,6 +1338,8 @@ class ESolarInverterPV(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1336,6 +1383,8 @@ class ESolarInverterPC(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1379,6 +1428,8 @@ class ESolarInverterPW(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1427,6 +1478,8 @@ class ESolarInverterGridPowerWatt(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1479,6 +1532,8 @@ class ESolarInverterGV(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1526,6 +1581,8 @@ class ESolarInverterGC(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1567,6 +1624,8 @@ class ESolarInverterTemperature(ESolarDevice):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
+                if self._offline_blocks_live_sensor(plant):
+                    return
                 # Setup static attributes
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
@@ -1640,6 +1699,8 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
+            if self._offline_blocks_live_sensor(plant):
+                return
             # Setup static attributes
             self._attr_available = True
             self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
@@ -1740,6 +1801,8 @@ class ESolarInverterBatterySoC(ESolarDevice):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
+            if self._offline_blocks_live_sensor(plant):
+                return
             # Setup static attributes
             self._attr_available = True
             self._attr_extra_state_attributes[P_NAME] = plant["plantName"]
@@ -1863,6 +1926,8 @@ class ESolarSensorMeterPower(ESolarMeter):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
+            if self._offline_blocks_live_sensor(plant):
+                return
             if "modules" in plant and plant["modules"] is not None:
                 for plant_module in plant["modules"]:
                     if plant_module['moduleSn'] == self._module_sn and "gridPower" in plant_module and plant_module["gridPower"] is not None:
@@ -1937,6 +2002,11 @@ class ESolarSensorBatteryEntity(ESolarBattery):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] != self._plant_name:
                 continue
+            if (
+                self._property in _LIVE_BATTERY_PROPS
+                and self._offline_blocks_live_sensor(plant)
+            ):
+                return
             if "batteries" in plant and plant["batteries"] is not None:
                 for battery in plant["batteries"]:
                     if battery['batSn'] == self._bat_sn:
