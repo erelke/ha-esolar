@@ -1707,23 +1707,30 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
             self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
 
             # Setup state
+            has_soc = False
             for kit in plant["devices"]:
                 if "deviceStatisticsData" not in kit:
                     continue
 
+                stats = kit["deviceStatisticsData"]
                 bat_capacity = 0.0
-                if "batCapacity" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["batCapacity"] is not None and float(kit["deviceStatisticsData"]["batCapacity"]) > 0:
-                    bat_capacity = float(kit["deviceStatisticsData"]["batCapacity"])
-                elif "batCapcity" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["batCapcity"] is not None and float(kit["deviceStatisticsData"]["batCapcity"]) > 0:
-                    bat_capacity = float(kit["deviceStatisticsData"]["batCapcity"])
-                elif "batCapicity" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["batCapicity"] is not None and float(kit["deviceStatisticsData"]["batCapicity"]) > 0:
-                    bat_capacity = float(kit["deviceStatisticsData"]["batCapicity"])
+                if stats.get("batCapacity") is not None and float(stats["batCapacity"]) > 0:
+                    bat_capacity = float(stats["batCapacity"])
+                elif stats.get("batCapcity") is not None and float(stats["batCapcity"]) > 0:
+                    bat_capacity = float(stats["batCapcity"])
+                elif stats.get("batCapicity") is not None and float(stats["batCapicity"]) > 0:
+                    bat_capacity = float(stats["batCapicity"])
 
                 installed += bat_capacity
-                available += float( bat_capacity * kit["deviceStatisticsData"]["batEnergyPercent"])
+                bat_pct = stats.get("batEnergyPercent")
+                if bat_pct is not None:
+                    has_soc = True
+                    available += bat_capacity * float(bat_pct)
 
-            if installed > 0:
+            if installed > 0 and has_soc:
                 self._attr_native_value = float(available / installed)
+            elif installed > 0:
+                self._attr_available = False
 
             if "gridDirection" in plant and plant["gridDirection"] is not None:
                 if plant["gridDirection"] == 1:
@@ -1811,7 +1818,12 @@ class ESolarInverterBatterySoC(ESolarDevice):
                 continue
             for kit in plant["devices"]:
                 if kit["deviceSn"] == self._inverter_sn:
-                    self._attr_native_value = float(kit["deviceStatisticsData"]["batEnergyPercent"])
+                    stats = kit["deviceStatisticsData"]
+                    bat_pct = stats.get("batEnergyPercent")
+                    if bat_pct is None:
+                        self._attr_available = False
+                        return
+                    self._attr_native_value = float(bat_pct)
 
                     self._attr_extra_state_attributes[I_MODEL] = kit["deviceType"]
                     self._attr_extra_state_attributes[I_SN] = kit["deviceSn"]
