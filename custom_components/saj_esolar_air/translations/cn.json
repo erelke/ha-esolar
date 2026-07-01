@@ -45,6 +45,12 @@
       "reconfigure_successful": "成功重新设置"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ 电站已无法访问",
+      "description": "以下电站已在 Home Assistant 中配置，但在您的 SAJ 账户中已不可用：{plants}。打开“配置”，并从监控站点中移除它们。"
+    }
+  },
   "selector": {
     "region": {
       "options": {

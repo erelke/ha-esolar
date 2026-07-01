@@ -45,6 +45,12 @@
       "reconfigure_successful": "Reconfigurado con éxito"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Planta SAJ ya no accesible",
+      "description": "La(s) siguiente(s) planta(s) están configuradas en Home Assistant pero ya no están disponibles en su cuenta SAJ: {plants}. Abra « Configurar » y elimínela(s) de los sitios supervisados."
+    }
+  },
   "selector": {
     "region": {
       "options": {

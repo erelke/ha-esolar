@@ -9,11 +9,12 @@ import requests
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_REGION, CONF_PASSWORD, CONF_USERNAME, Platform
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .const import CONF_MONITORED_SITES, CONF_PV_GRID_DATA, CONF_UPDATE_INTERVAL, DOMAIN, CONF_PLANT_UPDATE_INTERVAL
+from .const import CONF_MONITORED_SITES, CONF_PV_GRID_DATA, CONF_UPDATE_INTERVAL, DOMAIN, CONF_PLANT_UPDATE_INTERVAL, UNAVAILABLE_PLANTS
 from .esolar import get_esolar_data
 
 _LOGGER = logging.getLogger(__name__)
@@ -21,10 +22,11 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
-class ESolarResponse(TypedDict):
+class ESolarResponse(TypedDict, total=False):
     """API response."""
     plantList: list[dict]
     status: str
+    unavailablePlants: list[str]
 
 async def update_listener(hass, entry):
     """Handle options update."""
@@ -69,6 +71,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry."""
+    ir.async_delete_issue(hass, DOMAIN, f"unavailable_plant_{entry.entry_id}")
     if unload_ok := await hass.config_entries.async_unload_platforms(entry, PLATFORMS):
         domain_data = dict(hass.data[DOMAIN])  # Másolat készítése
         domain_data.pop(entry.entry_id, None)  # Biztonságos törlés
@@ -105,10 +108,35 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
             )
         except InvalidAuth as err:
             raise ConfigEntryAuthFailed from err
+        except PlantUnavailable as err:
+            unavailable = self._entry.options.get(CONF_MONITORED_SITES) or []
+            self._update_unavailable_plant_issues(unavailable)
+            raise UpdateFailed(str(err)) from err
         except ESolarError as err:
             raise UpdateFailed(str(err)) from err
 
+        self._update_unavailable_plant_issues(data.get(UNAVAILABLE_PLANTS) or [])
         return data
+
+    @callback
+    def _update_unavailable_plant_issues(self, unavailable_plants: list[str]) -> None:
+        """Surface plants that are configured but no longer accessible."""
+        issue_id = f"unavailable_plant_{self._entry.entry_id}"
+
+        if not unavailable_plants:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+
+        plant_list = ", ".join(unavailable_plants)
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="unavailable_plant",
+            translation_placeholders={"plants": plant_list},
+        )
 
 class ESolarError(HomeAssistantError):
     """Base error."""
@@ -120,6 +148,10 @@ class InvalidAuth(ESolarError):
 
 class APIRatelimitExceeded(ESolarError):
     """Raised when the API rate limit is exceeded."""
+
+
+class PlantUnavailable(ESolarError):
+    """Raised when configured plants are no longer accessible."""
 
 
 class UnknownError(ESolarError):
@@ -159,8 +191,12 @@ def get_data(
 
         if "Invalid authentication credentials" in err_str:
             raise InvalidAuth from err
+        if "captcha verification" in err_str.lower():
+            raise InvalidAuth from err
         if "API rate limit exceeded." in err_str:
             raise APIRatelimitExceeded from err
+        if "No accessible plants configured" in err_str:
+            raise PlantUnavailable(err_str) from err
 
         _LOGGER.exception("Unexpected exception")
         raise UnknownError from err

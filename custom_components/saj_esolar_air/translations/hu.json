@@ -45,6 +45,12 @@
       "reconfigure_successful": "Sikeresen újra beállítva"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ telep már nem elérhető",
+      "description": "A következő telep(ek) be vannak állítva a Home Assistantban, de már nem érhető(k) el a SAJ fiókodban: {plants}. Nyisd meg a Beállításokat és vedd ki őket a figyelt rendszerek közül."
+    }
+  },
   "selector": {
     "region": {
       "options": {

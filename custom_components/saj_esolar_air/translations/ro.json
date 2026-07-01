@@ -45,6 +45,12 @@
       "reconfigure_successful": "Reconfigurat cu succes"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Centrală SAJ indisponibilă",
+      "description": "Următoarele centrale sunt configurate în Home Assistant, dar nu mai sunt disponibile în contul dvs. SAJ: {plants}. Deschideți „Configurare” și eliminați-le din siturile monitorizate."
+    }
+  },
   "selector": {
     "region": {
       "options": {

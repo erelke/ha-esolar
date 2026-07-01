@@ -8,12 +8,17 @@ import os
 import requests
 from dateutil.relativedelta import relativedelta
 from .elekeeper import calc_signature, encrypt, generatkey, is_today, prepare_data_for_query
+from .const import UNAVAILABLE_PLANTS
 
 _LOGGER = logging.getLogger(__name__)
 
 WEB_TIMEOUT = 30
 END_USER_PLANT_LIST = None
 WEB_PLANT_DATA: dict = {}
+CAPTCHA_REQUIRED_MSG = (
+    "SAJ login requires captcha verification. "
+    "Log in at https://eop.saj-electric.com/ in a browser, then reload the integration."
+)
 
 BASIC_TEST = False
 VERBOSE_DEBUG = False
@@ -68,6 +73,18 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                 f"We don't have all plant_info, requesting"
             )
             plant_info = web_get_plant(region, session, plant_list)
+            unavailable = plant_info.get(UNAVAILABLE_PLANTS) or []
+            if unavailable:
+                _LOGGER.warning(
+                    "Configured plant(s) no longer accessible for %s: %s",
+                    username,
+                    ", ".join(unavailable),
+                )
+            if not plant_info.get("plantList"):
+                raise ValueError(
+                    "No accessible plants configured: "
+                    + ", ".join(unavailable or plant_list or [])
+                )
             #web_get_ems_list(region, session, plant_info)
             WEB_PLANT_DATA = {username: {'plant_list': plant_list, 'plant_info': plant_info}}
         else:
@@ -124,6 +141,139 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
     return plant_info
 
 
+def _login_sign_data():
+    """Common signed fields used for SAJ v1 login requests."""
+    return {
+        "appProjectName": "elekeeper",
+        "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
+        "lang": "en",
+        "timeStamp": int(time.time() * 1000),
+        "random": generatkey(32),
+        "clientId": "esolar-monitor-admin",
+    }
+
+
+def _session_from_token_answer(session, username, password, answer):
+    """Store token data from a login/refresh response and return the session."""
+    data = answer.get("data") or {}
+    if "token" not in data or "expiresIn" not in data:
+        _LOGGER.error("Token missing from answer: %s", answer)
+        raise ValueError("Token not found in answer: " + json.dumps(answer))
+
+    expires_in = int(data["expiresIn"])
+    expires_at = int(time.time() + expires_in) - 9
+    token_head = data.get("tokenHead") or "Bearer "
+    authorization_token = token_head + data["token"]
+    refresh_token = data.get("refreshToken")
+
+    store_user_data(username, password, authorization_token, expires_at, refresh_token)
+    session.headers.update({"Authorization": authorization_token})
+    _LOGGER.debug(
+        "Using token, expires in %s seconds (refresh token: %s)",
+        int(expires_at - time.time()),
+        "yes" if refresh_token else "no",
+    )
+    return session
+
+
+def _raise_login_error(answer):
+    """Raise a ValueError for a failed SAJ auth API response."""
+    err_code = answer.get("errCode")
+    err_msg = answer.get("errMsg") or "Unknown error"
+    err_msg_lower = err_msg.lower()
+
+    if err_code == 10004 or "invalid" in err_msg_lower or "password" in err_msg_lower:
+        raise ValueError(f"Invalid authentication credentials: {err_msg}")
+    if "captcha" in err_msg_lower:
+        raise ValueError(CAPTCHA_REQUIRED_MSG)
+    raise ValueError(f"Error message in answer: {err_msg}")
+
+
+def _captcha_required(region, session, username):
+    """Return True when SAJ requires captcha before password login."""
+    try:
+        signed = calc_signature(_login_sign_data())
+        post_data = signed | {
+            "type": "pwdLogin",
+            "roleType": 1,
+            "loginName": username,
+        }
+        response = session.post(
+            base_url(region) + "/sys/common/ali/getCaptchaInfo",
+            data=post_data,
+            timeout=WEB_TIMEOUT,
+        )
+        if response.status_code != 200:
+            _LOGGER.debug("Captcha check unavailable, status %s", response.status_code)
+            return False
+
+        answer = response.json()
+        if answer.get("errCode") != 0:
+            _LOGGER.debug("Captcha check returned: %s", answer.get("errMsg"))
+            return False
+
+        info = answer.get("data") or {}
+        return bool(info.get("sceneId") or info.get("prefix") or info.get("captchaUuid"))
+    except Exception as err:
+        _LOGGER.debug("Captcha check skipped: %s", err)
+        return False
+
+
+def _refresh_access_token(region, session, username, password, refresh_token):
+    """Refresh the bearer token using a stored refresh token."""
+    data = {
+        "refreshToken": refresh_token,
+        "appProjectName": "elekeeper",
+        "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
+        "lang": "en",
+        "timeStamp": int(time.time() * 1000),
+        "random": generatkey(32),
+    }
+    signed = calc_signature(data)
+    response = session.post(
+        base_url(region) + "/sys/refreshToken",
+        data=signed,
+        timeout=WEB_TIMEOUT,
+    )
+    response.raise_for_status()
+    answer = response.json()
+
+    if answer.get("errCode") != 0:
+        _raise_login_error(answer)
+
+    _LOGGER.debug("Refreshed SAJ access token for %s", username)
+    return _session_from_token_answer(session, username, password, answer)
+
+
+def _perform_login(region, session, username, password):
+    """Perform a full SAJ v1 password login."""
+    if _captcha_required(region, session, username):
+        raise ValueError(CAPTCHA_REQUIRED_MSG)
+
+    signed = calc_signature(_login_sign_data())
+    login_data = {
+        "username": username,
+        "password": encrypt(password),
+        "rememberMe": "false",
+        "loginType": 1,
+    }
+    response = session.post(
+        base_url(region) + "/sys/login",
+        data=signed | login_data,
+        timeout=WEB_TIMEOUT,
+    )
+    response.raise_for_status()
+    answer = response.json()
+
+    if answer.get("errCode") != 0:
+        _LOGGER.error("Login failed: %s", answer.get("errMsg"))
+        clear_user_tokens(username, password)
+        _raise_login_error(answer)
+
+    _LOGGER.debug("Performed SAJ password login for %s", username)
+    return _session_from_token_answer(session, username, password, answer)
+
+
 def esolar_web_autenticate(region, username, password):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
@@ -131,78 +281,26 @@ def esolar_web_autenticate(region, username, password):
 
     try:
         session = requests.Session()
-
-        # I try to authenticate as rarely as possible because if there are too many logins, a captcha challenge might appear.
         stored_data = read_user_data(username, password)
-        if "error" not in stored_data and "token" in stored_data and "expires" in stored_data:
-            authorization_token = stored_data["token"]
+
+        if "error" not in stored_data and stored_data.get("token"):
             authorization_expires = int(stored_data["expires"])
             dt = datetime.datetime.fromtimestamp(authorization_expires).strftime("%Y-%m-%d %H:%M:%S")
-            _LOGGER.debug(
-                f"Using disk cached token, expires at {dt}"
-            )
-            session.headers.update({'Authorization': authorization_token})
+            _LOGGER.debug("Using disk cached token, expires at %s", dt)
+            session.headers.update({"Authorization": stored_data["token"]})
             return session
 
-        _LOGGER.debug(
-            f"We don't have a valid token, authenticating..."
-        )
+        refresh_token = stored_data.get("refresh_token")
+        if "error" not in stored_data and refresh_token:
+            _LOGGER.debug("Access token expired, trying refresh token for %s", username)
+            try:
+                return _refresh_access_token(region, session, username, password, refresh_token)
+            except (ValueError, requests.exceptions.RequestException) as err:
+                _LOGGER.warning("Token refresh failed for %s: %s", username, err)
+                clear_user_tokens(username, password)
 
-        data_to_sign = {
-            "appProjectName": "elekeeper",
-            "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
-            "lang": "en",
-            "timeStamp": int(time.time()*1000),
-            "random": generatkey(32),
-            "clientId": "esolar-monitor-admin"
-        }
-
-        login_data = dict({
-            "username": username,
-            "password": encrypt(password),
-            "rememberMe": "false",
-            "loginType": 1,
-        })
-        signed = calc_signature(data_to_sign)
-        data = signed | login_data
-        response = (
-            session.post(
-                base_url(region) + "/sys/login",
-                data = data,
-                timeout=WEB_TIMEOUT,
-            )
-        )
-
-        response.raise_for_status()
-
-        if response.status_code != 200:
-            raise ValueError(f"Login failed, returned {response.status_code}")
-
-        answer = json.loads(response.text)
-
-        if "errCode" in answer and answer["errCode"] != 0:
-            if answer["errCode"] == 10004:
-                _LOGGER.error(f"Authorization failed, because {answer['errMsg']}")
-                store_user_data(username, password, None, None) #force reauth
-                return esolar_web_autenticate(region, username, password)
-
-            _LOGGER.error(f"Login failed, returned {answer['errMsg']}")
-            raise ValueError('Error message in answer: ' + answer['errMsg'])
-        else:
-            if "data" in answer and "token" in answer['data'] and 'expiresIn' in answer['data']:
-                expires_in = int(answer['data']['expiresIn']) #sec, nem ms
-                expires_at = int(time.time() + expires_in)-9 #3nap-10s
-                authorization_expires = expires_at
-                authorization_token =  answer['data']['tokenHead'] + answer['data']['token']
-                store_user_data(username, password, authorization_token, authorization_expires)
-                session.headers.update({'Authorization': authorization_token})
-                _LOGGER.debug(
-                    f"Using new token, expires in {int(expires_at - time.time())} seconds",
-                )
-                return session
-            else:
-                _LOGGER.error(f"Login failed, returned {answer}")
-                raise ValueError('Token not found in answer: ' + response.text)
+        _LOGGER.debug("No valid token for %s, performing password login", username)
+        return _perform_login(region, session, username, password)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -212,6 +310,11 @@ def esolar_web_autenticate(region, username, password):
         raise requests.exceptions.Timeout(errt)
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
+
+def clear_user_tokens(username: str, password: str, filename="user_data.json"):
+    """Remove cached SAJ tokens for a user."""
+    store_user_data(username, password, None, None, None, filename=filename)
+
 
 def store_user_data(username: str, password: str, token: str|None, expires: int|None, refresh_token: str|None = None, filename="user_data.json"):
     """Felhasználói adatokat tárol és frissít egy JSON fájlban, jelszó hash-eléssel."""
@@ -235,7 +338,11 @@ def store_user_data(username: str, password: str, token: str|None, expires: int|
         "password_hash": password_hash,
         "token": token,
         "expires": expires,
-        "expires_hrs": datetime.datetime.fromtimestamp(expires).strftime("%Y-%m-%d %H:%M:%S"),
+        "expires_hrs": (
+            datetime.datetime.fromtimestamp(expires).strftime("%Y-%m-%d %H:%M:%S")
+            if expires
+            else None
+        ),
         "refresh_token": refresh_token,
         "last_update": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
     }
@@ -273,12 +380,11 @@ def read_user_data(username: str, password: str, filename="user_data.json"):
     if password_hash != stored_password_hash:
         return {"error": "Helytelen jelszó."}
 
-    # Expiry ellenőrzése: Csak akkor adjuk vissza a tokent, ha még nem járt le
     current_time = int(time.time())
-    if expires > current_time:
-        return {"token": token, "expires": expires}
+    if token and expires and expires > current_time:
+        return {"token": token, "expires": expires, "refresh_token": refresh_token}
 
-    if refresh_token is not None:
+    if refresh_token:
         return {"refresh_token": refresh_token}
 
     return {"error": "A token lejárt."}
@@ -320,10 +426,16 @@ def web_get_plant(region, session, requested_plant_list=None):
         plant_list = response.json()
 
         if requested_plant_list is not None:
+            found_names: list[str] = []
             for plant in plant_list["data"]['list']:
                 if plant["plantName"] in requested_plant_list:
                     output_plant_list.append(plant)
-            return {"plantList": output_plant_list}
+                    found_names.append(plant["plantName"])
+            missing = [name for name in requested_plant_list if name not in found_names]
+            result = {"plantList": output_plant_list}
+            if missing:
+                result[UNAVAILABLE_PLANTS] = missing
+            return result
 
         return {"plantList": plant_list["data"]['list']}
 
@@ -977,6 +1089,10 @@ def web_get_alarm_list(region, session, plant_info, state: int = 3):
 
     try:
         for plant in plant_info["plantList"]:
+            plant["todayAlarmNum"] = plant.get("todayAlarmNum") or 0
+            for device in plant.get("devices", []):
+                device["todayAlarmNum"] = device.get("todayAlarmNum") or 0
+
             data = {
                 'appProjectName': 'elekeeper',
                 'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
@@ -1017,10 +1133,10 @@ def web_get_alarm_list(region, session, plant_info, state: int = 3):
                 alarm_list = answer["data"]["list"]
                 for alarm in alarm_list:
                     if "alarmStartTime" in alarm and alarm["alarmStartTime"] is not None and is_today(alarm["alarmStartTime"]):
-                        plant["todayAlarmNum"] = plant["todayAlarmNum"] + 1
+                        plant["todayAlarmNum"] = (plant.get("todayAlarmNum") or 0) + 1
                         for device in plant["devices"]:
                             if device["deviceSn"] == alarm["deviceSn"]:
-                                device["todayAlarmNum"] = device["todayAlarmNum"] + 1
+                                device["todayAlarmNum"] = (device.get("todayAlarmNum") or 0) + 1
                                 if "alarmList" not in device:
                                     device["alarmList"] = []
                                 del alarm["deviceSn"]

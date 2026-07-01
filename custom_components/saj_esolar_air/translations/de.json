@@ -45,6 +45,12 @@
       "reconfigure_successful": "Erfolgreich neu konfiguriert"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ-Anlage nicht mehr zugänglich",
+      "description": "Die folgende(n) Anlage(n) ist/sind in Home Assistant konfiguriert, aber in Ihrem SAJ-Konto nicht mehr verfügbar: {plants}. Öffnen Sie „Konfigurieren“ und entfernen Sie sie aus den überwachten Standorten."
+    }
+  },
   "selector": {
     "region": {
       "options": {

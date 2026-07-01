@@ -45,6 +45,12 @@
       "reconfigure_successful": "Успешно поново подешено"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ постројка више није доступна",
+      "description": "Следеће постројке су конфигурисане у Home Assistant-у, али више нису доступне на вашем SAJ налогу: {plants}. Отворите „Подешавање” и уклоните их из праћених локација."
+    }
+  },
   "selector": {
     "region": {
       "options": {

@@ -45,6 +45,12 @@
       "reconfigure_successful": "Pomyślnie ponownie skonfigurowano"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Instalacja SAJ niedostępna",
+      "description": "Następujące instalacje są skonfigurowane w Home Assistant, ale nie są już dostępne na Twoim koncie SAJ: {plants}. Otwórz „Konfiguruj” i usuń je z monitorowanych lokalizacji."
+    }
+  },
   "selector": {
     "region": {
       "options": {

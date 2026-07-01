@@ -45,6 +45,12 @@
       "reconfigure_successful": "Úspěšně znovu nakonfigurováno"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ elektrárna již není dostupná",
+      "description": "Následující elektrárny jsou nakonfigurovány v Home Assistant, ale již nejsou dostupné ve vašem účtu SAJ: {plants}. Otevřete „Konfiguraci“ a odeberte je z monitorovaných lokalit."
+    }
+  },
   "selector": {
     "region": {
       "options": {

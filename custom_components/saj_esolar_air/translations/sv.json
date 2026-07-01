@@ -45,6 +45,12 @@
       "reconfigure_successful": "Framgångsrikt ominstallerad"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ-anläggning inte längre tillgänglig",
+      "description": "Följande anläggning(ar) är konfigurerade i Home Assistant men är inte längre tillgängliga i ditt SAJ-konto: {plants}. Öppna „Konfigurera” och ta bort dem från övervakade platser."
+    }
+  },
   "selector": {
     "region": {
       "options": {

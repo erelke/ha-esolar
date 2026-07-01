@@ -45,6 +45,12 @@
       "reconfigure_successful": "Successfully reconfigured"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ plant no longer accessible",
+      "description": "The following plant(s) are configured in Home Assistant but are no longer available in your SAJ account: {plants}. Open Configure and remove them from monitored sites."
+    }
+  },
   "selector": {
     "region": {
       "options": {

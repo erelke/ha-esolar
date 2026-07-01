@@ -45,6 +45,12 @@
       "reconfigure_successful": "Reconfiguré avec succès"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Installation SAJ plus accessible",
+      "description": "La ou les installations suivantes sont configurées dans Home Assistant mais ne sont plus disponibles dans votre compte SAJ : {plants}. Ouvrez « Configurer » et retirez-les des sites surveillés."
+    }
+  },
   "selector": {
     "region": {
       "options": {

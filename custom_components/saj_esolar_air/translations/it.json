@@ -45,6 +45,12 @@
       "reconfigure_successful": "Riconfigurato con successo"
     }
   },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Impianto SAJ non più accessibile",
+      "description": "I seguenti impianti sono configurati in Home Assistant ma non sono più disponibili nel tuo account SAJ: {plants}. Apri « Configura » e rimuovili dai siti monitorati."
+    }
+  },
   "selector": {
     "region": {
       "options": {
