@@ -20,6 +20,24 @@ CAPTCHA_REQUIRED_MSG = (
     "Log in at https://eop.saj-electric.com/ in a browser, then reload the integration."
 )
 
+SESSION_AUTH_ERROR_CODES = {401, 403}
+SESSION_AUTH_KEYWORDS = (
+    "token",
+    "token expired",
+    "unauthorized",
+    "not logged",
+    "please log",
+    "please login",
+    "login again",
+    "session expired",
+    "session invalid",
+)
+
+
+class SessionAuthError(Exception):
+    """Raised when the SAJ API rejects the current session or token."""
+
+
 BASIC_TEST = False
 VERBOSE_DEBUG = False
 
@@ -54,24 +72,74 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
     if BASIC_TEST:
         return get_esolar_data_static_file("saj_esolar_air_dusnake_2", plant_list)
 
+    last_auth_error: SessionAuthError | None = None
+    for attempt in range(2):
+        force_login = attempt > 0
+        try:
+            return _fetch_esolar_data(
+                region,
+                username,
+                password,
+                plant_list,
+                use_pv_grid_attributes,
+                force_login=force_login,
+            )
+        except SessionAuthError as err:
+            last_auth_error = err
+            if attempt == 0:
+                _LOGGER.warning(
+                    "SAJ session rejected for %s, clearing tokens and re-authenticating: %s",
+                    username,
+                    err,
+                )
+                clear_user_tokens(username, password)
+                _clear_plant_data_cache(username)
+                continue
+            break
+
+    raise ValueError(
+        f"Invalid authentication credentials: {last_auth_error}"
+    ) from last_auth_error
+
+
+def _clear_plant_data_cache(username: str) -> None:
+    """Drop in-memory plant metadata cached for a user."""
+    global WEB_PLANT_DATA
+    if username in WEB_PLANT_DATA:
+        del WEB_PLANT_DATA[username]
+
+
+def _fetch_esolar_data(
+    region,
+    username,
+    password,
+    plant_list=None,
+    use_pv_grid_attributes=True,
+    *,
+    force_login: bool = False,
+):
+    """Fetch SAJ plant data using the current or freshly obtained session."""
     global WEB_PLANT_DATA
 
     try:
-        session = esolar_web_autenticate(region, username, password)
+        session = esolar_web_autenticate(
+            region, username, password, force_login=force_login
+        )
         plant_info = None
-        if (WEB_PLANT_DATA is not None
-                and username in WEB_PLANT_DATA
-                and WEB_PLANT_DATA[username] is not None
-                and "plant_list" in WEB_PLANT_DATA[username]
-                and "plant_info" in WEB_PLANT_DATA[username]
-                and WEB_PLANT_DATA[username]["plant_list"] == plant_list
-                and WEB_PLANT_DATA[username]["plant_info"] is not None):
+        if (
+            not force_login
+            and WEB_PLANT_DATA is not None
+            and username in WEB_PLANT_DATA
+            and WEB_PLANT_DATA[username] is not None
+            and "plant_list" in WEB_PLANT_DATA[username]
+            and "plant_info" in WEB_PLANT_DATA[username]
+            and WEB_PLANT_DATA[username]["plant_list"] == plant_list
+            and WEB_PLANT_DATA[username]["plant_info"] is not None
+        ):
             plant_info = WEB_PLANT_DATA[username]["plant_info"]
 
-        if plant_info is None :
-            _LOGGER.debug(
-                f"We don't have all plant_info, requesting"
-            )
+        if plant_info is None:
+            _LOGGER.debug("We don't have all plant_info, requesting")
             plant_info = web_get_plant(region, session, plant_list)
             unavailable = plant_info.get(UNAVAILABLE_PLANTS) or []
             if unavailable:
@@ -85,11 +153,14 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                     "No accessible plants configured: "
                     + ", ".join(unavailable or plant_list or [])
                 )
-            #web_get_ems_list(region, session, plant_info)
-            WEB_PLANT_DATA = {username: {'plant_list': plant_list, 'plant_info': plant_info}}
+            WEB_PLANT_DATA = {
+                username: {"plant_list": plant_list, "plant_info": plant_info}
+            }
         else:
             _LOGGER.debug(
-                f"We have plant data for {username}/{plant_list}, using cached data"
+                "We have plant data for %s/%s, using cached data",
+                username,
+                plant_list,
             )
 
         web_get_plant_details(region, session, plant_info)
@@ -111,21 +182,24 @@ def get_esolar_data(region, username, password, plant_list=None, use_pv_grid_att
                     stats = device.get("deviceStatisticsData") or {}
                     bat_pct = stats.get("batEnergyPercent")
                     device_bat_pct = device.get("batEnergyPercent")
-                    if (("hasBattery" in device and device["hasBattery"] == 1) or
-                            (bat_pct is not None and float(bat_pct) > 0) or
-                            (device_bat_pct is not None and int(device_bat_pct) > 0)):
+                    if (
+                        ("hasBattery" in device and device["hasBattery"] == 1)
+                        or (bat_pct is not None and float(bat_pct) > 0)
+                        or (
+                            device_bat_pct is not None
+                            and int(device_bat_pct) > 0
+                        )
+                    ):
                         device["hasBattery"] = 1
                         plant["hasBattery"] = 1
                         break
             except Exception as e:
-                _LOGGER.error(
-                    f"We don't have a battery for {username}: {e}"
-                )
+                _LOGGER.error("We don't have a battery for %s: %s", username, e)
         web_get_batteries_data(region, session, plant_info)
         web_get_device_battery_data(region, session, plant_info)
 
-        plant_info['status'] = 'success'
-        plant_info['stamp'] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        plant_info["status"] = "success"
+        plant_info["stamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -151,6 +225,82 @@ def _login_sign_data():
         "random": generatkey(32),
         "clientId": "esolar-monitor-admin",
     }
+
+
+def _is_session_auth_error(answer: dict) -> bool:
+    """Return True when a SAJ API response indicates an invalid session or token."""
+    err_code = answer.get("errCode", 0)
+    if err_code == 0:
+        return False
+
+    err_msg = (answer.get("errMsg") or "").lower()
+    if "captcha" in err_msg:
+        return True
+    if err_code in SESSION_AUTH_ERROR_CODES:
+        return True
+    if err_code == 10004 and any(
+        keyword in err_msg for keyword in ("invalid", "password", "token", "login")
+    ):
+        return True
+    return any(keyword in err_msg for keyword in SESSION_AUTH_KEYWORDS)
+
+
+def _parse_api_data(
+    answer: dict,
+    context: str,
+    *,
+    required: bool = True,
+    auth_critical: bool = False,
+):
+    """Validate a SAJ API response and return its data payload."""
+    err_code = answer.get("errCode", 0)
+    err_msg = answer.get("errMsg")
+
+    if err_code != 0:
+        if _is_session_auth_error(answer):
+            if auth_critical or required:
+                raise SessionAuthError(
+                    f"SAJ session rejected for {context} "
+                    f"(errCode={err_code}, errMsg={err_msg})"
+                )
+            _LOGGER.warning(
+                "SAJ API auth-like response for %s (errCode=%s, errMsg=%s)",
+                context,
+                err_code,
+                err_msg,
+            )
+            return None
+        err_msg_lower = (err_msg or "").lower()
+        if "captcha" in err_msg_lower:
+            raise ValueError(CAPTCHA_REQUIRED_MSG)
+        if required:
+            raise ValueError(
+                f"SAJ API error for {context} (errCode={err_code}, errMsg={err_msg})"
+            )
+        _LOGGER.warning(
+            "SAJ API error for %s (errCode=%s, errMsg=%s)",
+            context,
+            err_code,
+            err_msg,
+        )
+        return None
+
+    data = answer.get("data")
+    if data is None:
+        if auth_critical:
+            raise SessionAuthError(
+                f"No data in SAJ response for {context} (session may be invalid)"
+            )
+        if required:
+            _LOGGER.warning(
+                "No data in SAJ response for %s (errCode=%s, errMsg=%s)",
+                context,
+                err_code,
+                err_msg,
+            )
+        return None
+
+    return data
 
 
 def _session_from_token_answer(session, username, password, answer):
@@ -274,7 +424,7 @@ def _perform_login(region, session, username, password):
     return _session_from_token_answer(session, username, password, answer)
 
 
-def esolar_web_autenticate(region, username, password):
+def esolar_web_autenticate(region, username, password, force_login=False):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
         return True
@@ -283,23 +433,40 @@ def esolar_web_autenticate(region, username, password):
         session = requests.Session()
         stored_data = read_user_data(username, password)
 
-        if "error" not in stored_data and stored_data.get("token"):
+        if (
+            not force_login
+            and "error" not in stored_data
+            and stored_data.get("token")
+        ):
             authorization_expires = int(stored_data["expires"])
-            dt = datetime.datetime.fromtimestamp(authorization_expires).strftime("%Y-%m-%d %H:%M:%S")
+            dt = datetime.datetime.fromtimestamp(authorization_expires).strftime(
+                "%Y-%m-%d %H:%M:%S"
+            )
             _LOGGER.debug("Using disk cached token, expires at %s", dt)
             session.headers.update({"Authorization": stored_data["token"]})
             return session
 
         refresh_token = stored_data.get("refresh_token")
-        if "error" not in stored_data and refresh_token:
-            _LOGGER.debug("Access token expired, trying refresh token for %s", username)
+        if (
+            not force_login
+            and "error" not in stored_data
+            and refresh_token
+        ):
+            _LOGGER.debug(
+                "Access token expired, trying refresh token for %s", username
+            )
             try:
-                return _refresh_access_token(region, session, username, password, refresh_token)
+                return _refresh_access_token(
+                    region, session, username, password, refresh_token
+                )
             except (ValueError, requests.exceptions.RequestException) as err:
                 _LOGGER.warning("Token refresh failed for %s: %s", username, err)
                 clear_user_tokens(username, password)
 
-        _LOGGER.debug("No valid token for %s, performing password login", username)
+        if force_login:
+            _LOGGER.debug("Forced re-login for %s", username)
+        else:
+            _LOGGER.debug("No valid token for %s, performing password login", username)
         return _perform_login(region, session, username, password)
 
     except requests.exceptions.HTTPError as errh:
@@ -424,10 +591,19 @@ def web_get_plant(region, session, requested_plant_list=None):
             raise ValueError(f"Get plant error: {response.status_code}")
 
         plant_list = response.json()
+        list_data = _parse_api_data(
+            plant_list,
+            "getEndUserPlantList",
+            auth_critical=True,
+        )
+        if not isinstance(list_data, dict) or "list" not in list_data:
+            raise ValueError(
+                "Unexpected plant list response from SAJ API: missing list data"
+            )
 
         if requested_plant_list is not None:
             found_names: list[str] = []
-            for plant in plant_list["data"]['list']:
+            for plant in list_data["list"]:
                 if plant["plantName"] in requested_plant_list:
                     output_plant_list.append(plant)
                     found_names.append(plant["plantName"])
@@ -437,7 +613,7 @@ def web_get_plant(region, session, requested_plant_list=None):
                 result[UNAVAILABLE_PLANTS] = missing
             return result
 
-        return {"plantList": plant_list["data"]['list']}
+        return {"plantList": list_data["list"]}
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -479,7 +655,14 @@ def web_get_plant_details(region, session, plant_info):
                 raise ValueError(f"Get plant detail error: {response.status_code}")
 
             plant_detail = response.json()
-            plant.update(plant_detail["data"])
+            detail_data = _parse_api_data(
+                plant_detail,
+                f"getOnePlantInfo for {plant.get('plantName')}",
+                required=False,
+            )
+            if detail_data is None:
+                continue
+            plant.update(detail_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -526,11 +709,18 @@ def web_get_plant_statistics(region, session, plant_info):
                 raise ValueError(f"Get plant statistics data error: {response.status_code}")
 
             plant_statistics = response.json()
-            if 'data' in plant_statistics and 'deviceSnList' in plant_statistics['data']:
-                del plant_statistics['data']['deviceSnList']
-            if 'data' in plant_statistics and 'moduleSnList' in plant_statistics['data']:
-                del plant_statistics['data']['moduleSnList']
-            plant.update(plant_statistics["data"])
+            stats_data = _parse_api_data(
+                plant_statistics,
+                f"getPlantStatisticsData for {plant.get('plantName')}",
+                required=False,
+            )
+            if stats_data is None:
+                continue
+            if "deviceSnList" in stats_data:
+                del stats_data["deviceSnList"]
+            if "moduleSnList" in stats_data:
+                del stats_data["moduleSnList"]
+            plant.update(stats_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -575,10 +765,15 @@ def web_get_device_list(region, session, plant_info):
                 raise ValueError(f"Get device {plant['plantName']} deviceList error: {response.status_code}")
 
             answer = response.json()
-            if 'data' in answer and 'list' in answer['data']:
-                device_list = answer["data"]["list"]
-            else:
-                return
+            answer_data = _parse_api_data(
+                answer,
+                f"getDeviceList for {plant.get('plantName')}",
+                required=False,
+            )
+            if not answer_data or "list" not in answer_data:
+                continue
+
+            device_list = answer_data["list"]
 
             if "deviceSnList" not in plant:
                 plant["deviceSnList"] = []
@@ -630,7 +825,14 @@ def web_get_device_info(region, session, plant_info):
                     raise ValueError(f"Get device {device['deviceSn']} detail error: {response.status_code}")
 
                 device_detail = response.json()
-                device.update(device_detail["data"])
+                detail_data = _parse_api_data(
+                    device_detail,
+                    f"getOneDeviceInfo for {device.get('deviceSn')}",
+                    required=False,
+                )
+                if detail_data is None:
+                    continue
+                device.update(detail_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -687,21 +889,32 @@ def web_get_device_raw_data(region, session, plant_info):
                     raise ValueError(f"Get device {device['deviceSn']} raw data error: {response.status_code}")
 
                 raw = response.json()
-                if 'data' in raw and 'list' in raw['data'] and len(raw['data']['list']) > 0:
-                    raw_data = raw["data"]["list"][0]
-                    add_data = {}
-                    keys = ["deviceTemp", "deviceTempStr", "backupTotalLoadPowerWatt", "isShowModuleSignal", "moduleSignal", "pVP", "pac"]
-                    for key in keys:
-                        if key in raw_data:
-                            add_data[key] = raw_data[key]
-                        else:
-                            add_data[key] = 0
+                raw_data_payload = _parse_api_data(
+                    raw,
+                    f"findRawdataPageList for {device.get('deviceSn')}",
+                    required=False,
+                )
+                if (
+                    not isinstance(raw_data_payload, dict)
+                    or "list" not in raw_data_payload
+                    or len(raw_data_payload["list"]) == 0
+                ):
+                    continue
 
-                    if "datetime" in raw_data:
-                        add_data['raw_datetime'] = raw_data["datetime"]
+                raw_data = raw_data_payload["list"][0]
+                add_data = {}
+                keys = ["deviceTemp", "deviceTempStr", "backupTotalLoadPowerWatt", "isShowModuleSignal", "moduleSignal", "pVP", "pac"]
+                for key in keys:
+                    if key in raw_data:
+                        add_data[key] = raw_data[key]
                     else:
-                        add_data['raw_datetime'] = ''
-                    device.update(add_data)
+                        add_data[key] = 0
+
+                if "datetime" in raw_data:
+                    add_data['raw_datetime'] = raw_data["datetime"]
+                else:
+                    add_data['raw_datetime'] = ''
+                device.update(add_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -754,12 +967,13 @@ def web_get_plant_overview(region, session, plant_info):
                 raise ValueError(f"Get plant {plant["plantName"]} overview data error: {response.status_code}")
 
             overview = response.json()
-            if 'data' in overview:
-                plant.update(overview["data"])
-            else:
-                _LOGGER.warning(
-                    "Nincs data az overview-ban!?",
-                )
+            overview_data = _parse_api_data(
+                overview,
+                f"getPlantGridOverviewInfo for {plant.get('plantName')}",
+                required=False,
+            )
+            if overview_data is not None:
+                plant.update(overview_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -803,12 +1017,13 @@ def web_get_plant_flow_data(region, session, plant_info):
                 raise ValueError(f"Get plant {plant["plantName"]} energy flow data error: {response.status_code}")
 
             flow = response.json()
-            if 'data' in flow:
-                plant.update(flow["data"])
-            else:
-                _LOGGER.warning(
-                    "Nincs data a flow-ban!? {flow}",
-                )
+            flow_data = _parse_api_data(
+                flow,
+                f"getDeviceEneryFlowData for {plant.get('plantName')}",
+                required=False,
+            )
+            if flow_data is not None:
+                plant.update(flow_data)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -851,8 +1066,13 @@ def web_get_sec_statistics(region, session, plant_info):
                     raise ValueError(f"Get plant SECModuleList data error: {response.status_code}")
 
                 answer = response.json()
-                if 'data' in answer and answer["data"] is not None and len(answer["data"]) > 0:
-                    for module in answer["data"]:
+                module_data = _parse_api_data(
+                    answer,
+                    f"plantSECModuleList for {plant.get('plantName')}",
+                    required=False,
+                )
+                if module_data is not None and len(module_data) > 0:
+                    for module in module_data:
                         if "moduleSn" in module and module["moduleSn"] is not None:
                             module_sn = module["moduleSn"]
                             if "modules" not in plant:
@@ -909,17 +1129,22 @@ def web_get_sec_statistics(region, session, plant_info):
                             raise ValueError(f"Get plant getSecSelfUseEnergyData error: {response.status_code}")
 
                         answer = response.json()
-                        if 'data' in answer and answer["data"] is not None:
+                        energy_data = _parse_api_data(
+                            answer,
+                            f"getSecSelfUseEnergyData for {plant.get('plantName')}",
+                            required=False,
+                        )
+                        if energy_data is not None:
                             if "modules" not in plant:
                                 plant["modules"] = []
                             found = False
                             for plant_module in plant["modules"]:
                                 if "moduleSn" in plant_module and plant_module["moduleSn"] is not None and \
                                         plant_module["moduleSn"] == moduleSn:
-                                    plant_module.update(answer["data"])
+                                    plant_module.update(energy_data)
                                     found = True
                             if not found:
-                                plant["modules"].append(answer["data"])
+                                plant["modules"].append(energy_data)
 
 
     except requests.exceptions.HTTPError as errh:
@@ -967,8 +1192,16 @@ def web_get_batteries_data(region, session, plant_info):
                 raise ValueError(f"Get plant {plant["plantName"]} battery list data error: {response.status_code}")
 
             answer = response.json()
-            if 'data' in answer and answer["data"] is not None and "list" in answer["data"]:
-                plant["batteries"] = answer["data"]["list"]
+            battery_data = _parse_api_data(
+                answer,
+                f"getBatteryList for {plant.get('plantName')}",
+                required=False,
+            )
+            if (
+                isinstance(battery_data, dict)
+                and "list" in battery_data
+            ):
+                plant["batteries"] = battery_data["list"]
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -1013,14 +1246,21 @@ def web_get_device_battery_data(region, session, plant_info):
                     raise ValueError(f"Get plant {plant["plantName"]} battery list data error: {response.status_code}")
 
                 answer = response.json()
-                if 'data' in answer:
-                    del answer["data"]["baseBatteryBtnBeanList"]
-                    if "batteries" in plant and plant["batteries"] is not None:
-                        for battery in plant["batteries"]:
-                            if battery["batSn"] == device["deviceSn"]:
-                                battery.update(answer["data"])
-                    else:
-                        device.update(answer["data"])
+                battery_info = _parse_api_data(
+                    answer,
+                    f"getOneDeviceBatteryInfo for {device.get('deviceSn')}",
+                    required=False,
+                )
+                if battery_info is None:
+                    continue
+                if "baseBatteryBtnBeanList" in battery_info:
+                    del battery_info["baseBatteryBtnBeanList"]
+                if "batteries" in plant and plant["batteries"] is not None:
+                    for battery in plant["batteries"]:
+                        if battery["batSn"] == device["deviceSn"]:
+                            battery.update(battery_info)
+                else:
+                    device.update(battery_info)
 
     except requests.exceptions.HTTPError as errh:
         raise requests.exceptions.HTTPError(errh)
@@ -1065,10 +1305,15 @@ def web_get_ems_list(region, session, plant_info):
                 raise ValueError(f"Get device {plant['plantName']} deviceList error: {response.status_code}")
 
             answer = response.json()
-            if 'data' in answer and 'list' in answer['data']:
-                ems_list = answer["data"]["list"]
+            ems_data = _parse_api_data(
+                answer,
+                f"getEmsListByPlant for {plant.get('plantName')}",
+                required=False,
+            )
+            if isinstance(ems_data, dict) and "list" in ems_data:
+                ems_list = ems_data["list"]
             else:
-                return
+                continue
 
             plant.update({"emsModules": ems_list})
 
@@ -1129,8 +1374,13 @@ def web_get_alarm_list(region, session, plant_info, state: int = 3):
                 raise ValueError(f"Get device {plant["plantUid"]} alarm list error: {response.status_code}")
 
             answer = response.json()
-            if 'data' in answer and 'list' in answer['data'] and len(answer['data']['list']) > 0:
-                alarm_list = answer["data"]["list"]
+            answer_data = _parse_api_data(
+                answer,
+                f"userAlarmPage for {plant.get('plantName')}",
+                required=False,
+            )
+            if answer_data and "list" in answer_data and len(answer_data["list"]) > 0:
+                alarm_list = answer_data["list"]
                 for alarm in alarm_list:
                     if "alarmStartTime" in alarm and alarm["alarmStartTime"] is not None and is_today(alarm["alarmStartTime"]):
                         plant["todayAlarmNum"] = (plant.get("todayAlarmNum") or 0) + 1

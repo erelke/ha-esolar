@@ -26,7 +26,12 @@ from .const import (
     CONF_REGION_IN,
     CONF_REGION_CN
 )
-from .esolar import esolar_web_autenticate, web_get_plant
+from .esolar import (
+    clear_user_tokens,
+    esolar_web_autenticate,
+    SessionAuthError,
+    web_get_plant,
+)
 
 CONF_TITLE = "SAJ eSolar"
 
@@ -59,8 +64,26 @@ class ESolarHub:
     def auth_and_get_solar_plants(self, region: str, username: str, password: str) -> bool:
         """Download and list available inverters."""
         try:
-            session = esolar_web_autenticate(region, username, password)
-            self.plant_list = web_get_plant(region, session).get("plantList")
+            for attempt in range(2):
+                try:
+                    if attempt > 0:
+                        clear_user_tokens(username, password)
+                    session = esolar_web_autenticate(
+                        region,
+                        username,
+                        password,
+                        force_login=attempt > 0,
+                    )
+                    self.plant_list = web_get_plant(region, session).get("plantList")
+                    return bool(self.plant_list)
+                except SessionAuthError:
+                    if attempt == 0:
+                        _LOGGER.warning(
+                            "SAJ session rejected during setup for %s, retrying login",
+                            username,
+                        )
+                        continue
+                    return False
         except requests.exceptions.HTTPError:
             _LOGGER.error("Login: HTTPError")
             return False
@@ -73,7 +96,10 @@ class ESolarHub:
         except requests.exceptions.RequestException:
             _LOGGER.error("Login: RequestException")
             return False
-        return True
+        except ValueError as err:
+            _LOGGER.error("Login failed: %s", err)
+            return False
+        return False
 
 
 async def validate_input(hass: HomeAssistant, data: dict[str, Any]) -> dict[str, Any]:
@@ -98,6 +124,61 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Set up the the config flow."""
         self.sites = {}
         self.data = {}
+
+    async def async_step_reauth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> FlowResult:
+        """Handle reauthentication after the API rejects the stored session."""
+        reauth_entry = self._get_reauth_entry()
+        errors: dict[str, str] = {}
+        reauth_schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_REGION, default=reauth_entry.data.get(CONF_REGION, CONF_REGION_EU)
+                ): SelectSelector(
+                    SelectSelectorConfig(
+                        options=[CONF_REGION_EU, CONF_REGION_IN, CONF_REGION_CN],
+                        translation_key=CONF_REGION,
+                    )
+                ),
+                vol.Required(
+                    CONF_USERNAME, default=reauth_entry.data.get(CONF_USERNAME)
+                ): str,
+                vol.Required(CONF_PASSWORD): str,
+            }
+        )
+
+        if user_input is None:
+            return self.async_show_form(
+                step_id="reauth",
+                data_schema=reauth_schema,
+            )
+
+        try:
+            await validate_input(self.hass, user_input)
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unexpected exception during reauth")
+            errors["base"] = "unknown"
+        else:
+            clear_user_tokens(user_input[CONF_USERNAME], user_input[CONF_PASSWORD])
+            return self.async_update_reload_and_abort(
+                reauth_entry,
+                data={
+                    CONF_REGION: user_input[CONF_REGION],
+                    CONF_USERNAME: user_input[CONF_USERNAME],
+                    CONF_PASSWORD: user_input[CONF_PASSWORD],
+                },
+            )
+
+        return self.async_show_form(
+            step_id="reauth",
+            data_schema=reauth_schema,
+            errors=errors,
+        )
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None

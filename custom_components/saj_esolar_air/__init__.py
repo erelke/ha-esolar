@@ -193,6 +193,8 @@ def get_data(
             raise InvalidAuth from err
         if "captcha verification" in err_str.lower():
             raise InvalidAuth from err
+        if "session rejected" in err_str.lower():
+            raise InvalidAuth from err
         if "API rate limit exceeded." in err_str:
             raise APIRatelimitExceeded from err
         if "No accessible plants configured" in err_str:
