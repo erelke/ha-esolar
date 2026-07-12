@@ -5,6 +5,8 @@ from datetime import timedelta, datetime
 import pytz
 import logging
 from .elekeeper import extract_number, split_camel_case, extract_date
+
+_LOGGER = logging.getLogger(__name__)
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,

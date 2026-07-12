@@ -128,6 +128,11 @@ class ESolarPlantDashboardSensor(CoordinatorEntity[ESolarCoordinator], SensorEnt
         self._attr_translation_key = translation_key
         self._attr_unique_id = f"plant_{plant_uid}_{translation_key}"
 
+    def _plant_list(self) -> list[dict]:
+        if not self.coordinator.data:
+            return []
+        return self.coordinator.data.get("plantList") or []
+
     def _offline_blocks_live_sensor(self, plant: dict) -> bool:
         return offline_blocks_live_sensor(self, plant)
 
@@ -165,7 +170,7 @@ class ESolarPlantGridPowerSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if self._offline_blocks_live_sensor(plant):
@@ -194,7 +199,7 @@ class ESolarPlantGridPowerAbsoluteSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if self._offline_blocks_live_sensor(plant):
@@ -220,7 +225,7 @@ class ESolarPlantBatteryPowerSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if not plant_has_battery(plant):
@@ -255,7 +260,7 @@ class ESolarPlantBatteryPowerAbsoluteSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if not plant_has_battery(plant):
@@ -285,7 +290,7 @@ class ESolarPlantPvPowerSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if self._offline_blocks_live_sensor(plant):
@@ -315,7 +320,7 @@ class ESolarPlantLoadPowerSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if self._offline_blocks_live_sensor(plant):
@@ -343,7 +348,7 @@ class ESolarPlantSelfUseRateSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             rate = _float_value(plant.get("selfUseRate"))
@@ -371,7 +376,7 @@ class ESolarPlantUsableBatteryCapacitySensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if not plant_has_battery(plant):
@@ -403,7 +408,7 @@ class ESolarPlantBatteryRemainingTimeSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if not plant_has_battery(plant):
@@ -430,7 +435,7 @@ class ESolarPlantOperatingModeSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if not plant_has_battery(plant):
@@ -455,7 +460,7 @@ class ESolarPlantDeviceOnlineSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             state = plant.get("runningState")
@@ -491,7 +496,7 @@ class ESolarPlantDirectionSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             if self._offline_blocks_live_sensor(plant):
@@ -534,7 +539,7 @@ class ESolarPlantDailyEnvironmentalSensor(ESolarPlantDashboardSensor):
         self._attr_native_value = None
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             value = _float_value(plant.get(self._plant_field))
@@ -556,7 +561,7 @@ class ESolarPlantInverterStatusSensor(ESolarPlantDashboardSensor):
         self._attr_extra_state_attributes: dict[str, Any] = {}
 
     def process_data(self) -> None:
-        for plant in self._coordinator.data["plantList"]:
+        for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
             status = plant.get("deviceStatus")
