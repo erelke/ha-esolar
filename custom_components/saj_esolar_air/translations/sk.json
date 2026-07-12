@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Sieťový výkon"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Sieťový výkon (absolútny)"
+      },
+      "plant_battery_power": {
+        "name": "Výkon batérie"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Výkon batérie (absolútny)"
+      },
+      "plant_pv_power": {
+        "name": "FV výkon"
+      },
+      "plant_load_power": {
+        "name": "Výkon spotreby"
+      },
+      "plant_self_use_rate": {
+        "name": "Miera vlastnej spotreby"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Využiteľná kapacita batérie"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Zostávajúci čas batérie"
+      },
+      "plant_operating_mode": {
+        "name": "Prevádzkový režim"
+      },
+      "plant_device_online": {
+        "name": "Zariadenie online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Smer FV",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Neznámy"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Smer siete",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Neznámy"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Smer batérie",
+        "state": {
+          "charging": "Nabíjanie",
+          "idle": "Nečinný",
+          "discharging": "Vybíjanie",
+          "unknown": "Neznámy"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Smer výstupu",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Neznámy"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Stromy zasadené dnes"
+      },
+      "plant_daily_co2": {
+        "name": "Redukcia CO₂ dnes"
+      },
+      "plant_inverter_status": {
+        "name": "Stav meniča",
+        "state": {
+          "normal": "Normálny",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Neznámy"
+        }
+      }
+    }
   }
 }

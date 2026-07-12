@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Käyttäjätunnus",
+          "password": "Salasana",
+          "region": "Valitse alue, jossa aurinkoenergiajärjestelmäsi sijaitsee."
+        },
+        "description": "Syötä SAJ eSolar -tilisi käyttäjätunnus ja salasana",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Kohteet"
+        },
+        "description": "Valitse seurattavat kohteet",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Käyttäjätunnus",
+          "password": "Salasana",
+          "region": "Valitse alue, jossa aurinkoenergiajärjestelmäsi sijaitsee."
+        },
+        "description": "Syötä SAJ eSolar -tilisi käyttäjätunnus ja salasana",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Kohteet"
+        },
+        "description": "Valitse seurattavat kohteet",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Yhteyttä ei voitu muodostaa",
+      "invalid_auth": "Virheellinen tunnistautuminen",
+      "unknown": "Tuntematon",
+      "no_sites": "Seurattavia kohteita ei valittu"
+    },
+    "abort": {
+      "already_configured": "Jo määritetty",
+      "reconfigure_successful": "Uudelleenmääritys onnistui"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ-laitos ei ole enää saatavilla",
+      "description": "Seuraavat laitokset on määritetty Home Assistantissa, mutta ne eivät ole enää saatavilla SAJ-tililläsi: {plants}. Avaa Määritä ja poista ne seuratuista kohteista."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Eurooppa – Käyttäjille Euroopassa",
+        "in": "Kansainvälinen – Käyttäjille Pohjois-Amerikassa, Etelä-Amerikassa, Afrikassa, Oceaniassa ja muissa Aasian alueissa",
+        "cn": "Kiina – Käyttäjille Kiinassa"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Näytä invertterianturit",
+          "show_pv_grid_data": "Näytä aurinko- ja verkkomittaukset",
+          "plant_update_interval": "Laitoksen päivitysväli (minuutteina)"
+        },
+        "description": "Valitse asetukset",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Verkkoteho"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Verkkoteho (itseisarvo)"
+      },
+      "plant_battery_power": {
+        "name": "Akun teho"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Akun teho (itseisarvo)"
+      },
+      "plant_pv_power": {
+        "name": "Aurinkoteho"
+      },
+      "plant_load_power": {
+        "name": "Kulutusteho"
+      },
+      "plant_self_use_rate": {
+        "name": "Oman kulutuksen osuus"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Käytettävissä oleva akkukapasiteetti"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Akun jäljellä oleva aika"
+      },
+      "plant_operating_mode": {
+        "name": "Käyttötila"
+      },
+      "plant_device_online": {
+        "name": "Laite online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Aurinkosuunta",
+        "state": {
+          "importing": "Tuonti",
+          "standby": "Valmiustila",
+          "exporting": "Vienti",
+          "unknown": "Tuntematon"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Verkkosuunta",
+        "state": {
+          "importing": "Tuonti",
+          "standby": "Valmiustila",
+          "exporting": "Vienti",
+          "unknown": "Tuntematon"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Akun suunta",
+        "state": {
+          "charging": "Lataus",
+          "idle": "Odottaa",
+          "discharging": "Purku",
+          "unknown": "Tuntematon"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Lähtösuunta",
+        "state": {
+          "importing": "Tuonti",
+          "standby": "Valmiustila",
+          "exporting": "Vienti",
+          "unknown": "Tuntematon"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Tänään istutetut puut"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂-vähennys tänään"
+      },
+      "plant_inverter_status": {
+        "name": "Invertterin tila",
+        "state": {
+          "normal": "Normaali",
+          "alarm": "Hälytys",
+          "offline": "Offline",
+          "unknown": "Tuntematon"
+        }
+      }
+    }
+  }
+}

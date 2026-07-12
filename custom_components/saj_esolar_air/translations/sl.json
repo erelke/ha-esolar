@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Uporabniško ime",
+          "password": "Geslo",
+          "region": "Izberite regijo, kjer se nahaja vaš sončni sistem."
+        },
+        "description": "Vnesite uporabniško ime in geslo za vaš SAJ eSolar račun",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Lokacije"
+        },
+        "description": "Izberite lokacije za spremljanje",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Uporabniško ime",
+          "password": "Geslo",
+          "region": "Izberite regijo, kjer se nahaja vaš sončni sistem."
+        },
+        "description": "Vnesite uporabniško ime in geslo za vaš SAJ eSolar račun",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Lokacije"
+        },
+        "description": "Izberite lokacije za spremljanje",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Povezave ni mogoče vzpostaviti",
+      "invalid_auth": "Neveljavna avtentikacija",
+      "unknown": "Neznano",
+      "no_sites": "Ni izbranih spremljanih lokacij"
+    },
+    "abort": {
+      "already_configured": "Že konfigurirano",
+      "reconfigure_successful": "Uspešno rekonfigurirano"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ naprava ni več dostopna",
+      "description": "Naslednje naprave so konfigurirane v Home Assistantu, vendar na vašem SAJ računu niso več na voljo: {plants}. Odprite Konfiguriraj in jih odstranite s spremljanih lokacij."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Evropa – Za uporabnike v Evropi",
+        "in": "Mednarodno – Za uporabnike v Severni Ameriki, Južni Ameriki, Afriki, Oceaniji in drugih regijah Azije",
+        "cn": "Kitajska – Za uporabnike na Kitajskem"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Prikaži senzorje pretvornika",
+          "show_pv_grid_data": "Prikaži PV in omrežne atribute",
+          "plant_update_interval": "Interval posodabljanja naprave (minute)"
+        },
+        "description": "Izberite možnosti",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Omrežna moč"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Omrežna moč (absolutna)"
+      },
+      "plant_battery_power": {
+        "name": "Moč baterije"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Moč baterije (absolutna)"
+      },
+      "plant_pv_power": {
+        "name": "PV moč"
+      },
+      "plant_load_power": {
+        "name": "Moč porabe"
+      },
+      "plant_self_use_rate": {
+        "name": "Stopnja lastne porabe"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Uporabna kapaciteta baterije"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Preostali čas baterije"
+      },
+      "plant_operating_mode": {
+        "name": "Delovni način"
+      },
+      "plant_device_online": {
+        "name": "Naprava online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV smer",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Mirovanje",
+          "exporting": "Izvoz",
+          "unknown": "Neznano"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Smer omrežja",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Mirovanje",
+          "exporting": "Izvoz",
+          "unknown": "Neznano"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Smer baterije",
+        "state": {
+          "charging": "Polnjenje",
+          "idle": "Mirovanje",
+          "discharging": "Praznjenje",
+          "unknown": "Neznano"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Izhodna smer",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Mirovanje",
+          "exporting": "Izvoz",
+          "unknown": "Neznano"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Drevesa posajena danes"
+      },
+      "plant_daily_co2": {
+        "name": "Zmanjšanje CO₂ danes"
+      },
+      "plant_inverter_status": {
+        "name": "Status pretvornika",
+        "state": {
+          "normal": "Normalno",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Neznano"
+        }
+      }
+    }
+  }
+}

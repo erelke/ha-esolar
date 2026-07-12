@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Notandanafn",
+          "password": "Lykilorð",
+          "region": "Veldu svæðið þar sem sólkerfið þitt er staðsett."
+        },
+        "description": "Sláðu inn notandanafn og lykilorð SAJ eSolar reikningsins",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Stöðvar"
+        },
+        "description": "Veldu stöðvar til að fylgjast með",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Notandanafn",
+          "password": "Lykilorð",
+          "region": "Veldu svæðið þar sem sólkerfið þitt er staðsett."
+        },
+        "description": "Sláðu inn notandanafn og lykilorð SAJ eSolar reikningsins",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Stöðvar"
+        },
+        "description": "Veldu stöðvar til að fylgjast með",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Get ekki tengst",
+      "invalid_auth": "Ógild auðkenning",
+      "unknown": "Óþekkt",
+      "no_sites": "Engar stöðvar valdar til eftirlits"
+    },
+    "abort": {
+      "already_configured": "Þegar stillt",
+      "reconfigure_successful": "Endurstilling tókst"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ stöð ekki lengur aðgengileg",
+      "description": "Eftirfarandi stöðvar eru stilltar í Home Assistant en eru ekki lengur aðgengilegar á SAJ reikningnum þínum: {plants}. Opnaðu Stilla og fjarlægðu þær úr eftirlitsstöðvum."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Evrópa – Fyrir notendur í Evrópu",
+        "in": "Alþjóðlegt – Fyrir notendur í Norður-Ameríku, Suður-Ameríku, Afríku, Eyjaálfunni og öðrum svæðum Asíu",
+        "cn": "Kína – Fyrir notendur í Kína"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Sýna skynjara invertera",
+          "show_pv_grid_data": "Sýna sól- og neteiginleika",
+          "plant_update_interval": "Uppfærslutími stöðvar (mínútur)"
+        },
+        "description": "Veldu valkosti",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Netafli"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Netafli (algilt)"
+      },
+      "plant_battery_power": {
+        "name": "Rafhlaðuafli"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Rafhlaðuafli (algilt)"
+      },
+      "plant_pv_power": {
+        "name": "PV afl"
+      },
+      "plant_load_power": {
+        "name": "Notkunarafli"
+      },
+      "plant_self_use_rate": {
+        "name": "Sjálfsnotkun hlutfall"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Notanleg rafhlaðugeta"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Eftirstandandi rafhlaðutími"
+      },
+      "plant_operating_mode": {
+        "name": "Vinnustilling"
+      },
+      "plant_device_online": {
+        "name": "Tæki tengt",
+        "state": {
+          "online": "Online",
+          "offline": "Ótengt"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV stefna",
+        "state": {
+          "importing": "Innflutningur",
+          "standby": "Bið",
+          "exporting": "Útflutningur",
+          "unknown": "Óþekkt"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Netstefna",
+        "state": {
+          "importing": "Innflutningur",
+          "standby": "Bið",
+          "exporting": "Útflutningur",
+          "unknown": "Óþekkt"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Rafhlaðustefna",
+        "state": {
+          "charging": "Hleðsla",
+          "idle": "Aðgerðalaust",
+          "discharging": "Af hleðslu",
+          "unknown": "Óþekkt"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Úttaksstefna",
+        "state": {
+          "importing": "Innflutningur",
+          "standby": "Bið",
+          "exporting": "Útflutningur",
+          "unknown": "Óþekkt"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Tré gróðursett í dag"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ minnkun í dag"
+      },
+      "plant_inverter_status": {
+        "name": "Staða invertera",
+        "state": {
+          "normal": "Eðlilegt",
+          "alarm": "Viðvörun",
+          "offline": "Ótengt",
+          "unknown": "Óþekkt"
+        }
+      }
+    }
+  }
+}

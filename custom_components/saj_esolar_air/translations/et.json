@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Kasutajanimi",
+          "password": "Parool",
+          "region": "Valige piirkond, kus teie päikesesüsteem asub."
+        },
+        "description": "Sisestage oma SAJ eSolar konto kasutajanimi ja parool",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Objektid"
+        },
+        "description": "Valige jälgitavad objektid",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Kasutajanimi",
+          "password": "Parool",
+          "region": "Valige piirkond, kus teie päikesesüsteem asub."
+        },
+        "description": "Sisestage oma SAJ eSolar konto kasutajanimi ja parool",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Objektid"
+        },
+        "description": "Valige jälgitavad objektid",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Ühendust ei saa luua",
+      "invalid_auth": "Vigane autentimine",
+      "unknown": "Tundmatu",
+      "no_sites": "Jälgitavaid objekte pole valitud"
+    },
+    "abort": {
+      "already_configured": "Juba seadistatud",
+      "reconfigure_successful": "Uuesti seadistamine õnnestus"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ objekt pole enam saadaval",
+      "description": "Järgmised objektid on Home Assistantis seadistatud, kuid pole teie SAJ kontol enam saadaval: {plants}. Avage Seadista ja eemaldage need jälgitavate objektide hulgast."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Euroopa – Kasutajatele Euroopas",
+        "in": "Rahvusvaheline – Kasutajatele Põhja-Ameerikas, Lõuna-Ameerikas, Aafrikas, Okeaania ja teistes Aasia piirkondades",
+        "cn": "Hiina – Kasutajatele Hiinas"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Kuva inverteri andureid",
+          "show_pv_grid_data": "Kuva PV ja võrgu atribuute",
+          "plant_update_interval": "Objekti värskendusintervall (minutites)"
+        },
+        "description": "Valige suvandid",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Võrguvõimsus"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Võrguvõimsus (absoluutne)"
+      },
+      "plant_battery_power": {
+        "name": "Aku võimsus"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Aku võimsus (absoluutne)"
+      },
+      "plant_pv_power": {
+        "name": "PV võimsus"
+      },
+      "plant_load_power": {
+        "name": "Tarbimisvõimsus"
+      },
+      "plant_self_use_rate": {
+        "name": "Isetarbimise määr"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Kasutatav aku maht"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Akut aega jäänud"
+      },
+      "plant_operating_mode": {
+        "name": "Töörežiim"
+      },
+      "plant_device_online": {
+        "name": "Seade online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV suund",
+        "state": {
+          "importing": "Import",
+          "standby": "Ootel",
+          "exporting": "Eksport",
+          "unknown": "Tundmatu"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Võrgu suund",
+        "state": {
+          "importing": "Import",
+          "standby": "Ootel",
+          "exporting": "Eksport",
+          "unknown": "Tundmatu"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Aku suund",
+        "state": {
+          "charging": "Laadimine",
+          "idle": "Jõude",
+          "discharging": "Tühjenemine",
+          "unknown": "Tundmatu"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Väljundsuund",
+        "state": {
+          "importing": "Import",
+          "standby": "Ootel",
+          "exporting": "Eksport",
+          "unknown": "Tundmatu"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Täna istutatud puud"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ vähendus täna"
+      },
+      "plant_inverter_status": {
+        "name": "Inverteri olek",
+        "state": {
+          "normal": "Normaalne",
+          "alarm": "Häire",
+          "offline": "Offline",
+          "unknown": "Tundmatu"
+        }
+      }
+    }
+  }
+}

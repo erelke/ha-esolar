@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Όνομα χρήστη",
+          "password": "Κωδικός πρόσβασης",
+          "region": "Επιλέξτε την περιοχή όπου βρίσκεται το φωτοβολταϊκό σας σύστημα."
+        },
+        "description": "Εισαγάγετε το όνομα χρήστη και τον κωδικό πρόσβασης του λογαριασμού SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Εγκαταστάσεις"
+        },
+        "description": "Επιλέξτε εγκαταστάσεις προς παρακολούθηση",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Όνομα χρήστη",
+          "password": "Κωδικός πρόσβασης",
+          "region": "Επιλέξτε την περιοχή όπου βρίσκεται το φωτοβολταϊκό σας σύστημα."
+        },
+        "description": "Εισαγάγετε το όνομα χρήστη και τον κωδικό πρόσβασης του λογαριασμού SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Εγκαταστάσεις"
+        },
+        "description": "Επιλέξτε εγκαταστάσεις προς παρακολούθηση",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Αδυναμία σύνδεσης",
+      "invalid_auth": "Μη έγκυρος έλεγχος ταυτότητας",
+      "unknown": "Άγνωστο",
+      "no_sites": "Δεν επιλέχθηκαν εγκαταστάσεις προς παρακολούθηση"
+    },
+    "abort": {
+      "already_configured": "Ήδη ρυθμισμένο",
+      "reconfigure_successful": "Επιτυχής επαναρύθμιση"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Η εγκατάσταση SAJ δεν είναι πλέον προσβάσιμη",
+      "description": "Οι ακόλουθες εγκαταστάσεις έχουν ρυθμιστεί στο Home Assistant, αλλά δεν είναι πλέον διαθέσιμες στον λογαριασμό SAJ: {plants}. Ανοίξτε Ρύθμιση και αφαιρέστε τις από τις παρακολουθούμενες εγκαταστάσεις."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Ευρώπη – Για χρήστες στην Ευρώπη",
+        "in": "Διεθνές – Για χρήστες στη Βόρεια Αμερική, τη Νότια Αμερική, την Αφρική, την Ωκεανία και άλλες περιοχές της Ασίας",
+        "cn": "Κίνα – Για χρήστες στην Κίνα"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Εμφάνιση αισθητήρων inverter",
+          "show_pv_grid_data": "Εμφάνιση φωτοβολταϊκών και δικτυακών χαρακτηριστικών",
+          "plant_update_interval": "Διάστημα ενημέρωσης εγκατάστασης (λεπτά)"
+        },
+        "description": "Επιλογή ρυθμίσεων",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Ισχύς δικτύου"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Ισχύς δικτύου (απόλυτη)"
+      },
+      "plant_battery_power": {
+        "name": "Ισχύς μπαταρίας"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Ισχύς μπαταρίας (απόλυτη)"
+      },
+      "plant_pv_power": {
+        "name": "Ισχύς PV"
+      },
+      "plant_load_power": {
+        "name": "Ισχύς κατανάλωσης"
+      },
+      "plant_self_use_rate": {
+        "name": "Ποσοστό αυτοκατανάλωσης"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Διαθέσιμη χωρητικότητα μπαταρίας"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Υπολειπόμενος χρόνος μπαταρίας"
+      },
+      "plant_operating_mode": {
+        "name": "Λειτουργική κατάσταση"
+      },
+      "plant_device_online": {
+        "name": "Συσκευή online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Κατεύθυνση PV",
+        "state": {
+          "importing": "Εισαγωγή",
+          "standby": "Αναμονή",
+          "exporting": "Εξαγωγή",
+          "unknown": "Άγνωστο"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Κατεύθυνση δικτύου",
+        "state": {
+          "importing": "Εισαγωγή",
+          "standby": "Αναμονή",
+          "exporting": "Εξαγωγή",
+          "unknown": "Άγνωστο"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Κατεύθυνση μπαταρίας",
+        "state": {
+          "charging": "Φόρτιση",
+          "idle": "Αδράνεια",
+          "discharging": "Αποφόρτιση",
+          "unknown": "Άγνωστο"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Κατεύθυνση εξόδου",
+        "state": {
+          "importing": "Εισαγωγή",
+          "standby": "Αναμονή",
+          "exporting": "Εξαγωγή",
+          "unknown": "Άγνωστο"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Δέντρα που φυτεύτηκαν σήμερα"
+      },
+      "plant_daily_co2": {
+        "name": "Μείωση CO₂ σήμερα"
+      },
+      "plant_inverter_status": {
+        "name": "Κατάσταση inverter",
+        "state": {
+          "normal": "Κανονική",
+          "alarm": "Συναγερμός",
+          "offline": "Offline",
+          "unknown": "Άγνωστο"
+        }
+      }
+    }
+  }
+}

@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Putere rețea"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Putere rețea (absolută)"
+      },
+      "plant_battery_power": {
+        "name": "Putere baterie"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Putere baterie (absolută)"
+      },
+      "plant_pv_power": {
+        "name": "Putere PV"
+      },
+      "plant_load_power": {
+        "name": "Putere consum"
+      },
+      "plant_self_use_rate": {
+        "name": "Rată autoconsum"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capacitate baterie utilizabilă"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Timp rămas baterie"
+      },
+      "plant_operating_mode": {
+        "name": "Mod de operare"
+      },
+      "plant_device_online": {
+        "name": "Dispozitiv online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Direcție PV",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Necunoscut"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Direcție rețea",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Necunoscut"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Direcție baterie",
+        "state": {
+          "charging": "Încărcare",
+          "idle": "Inactiv",
+          "discharging": "Descărcare",
+          "unknown": "Necunoscut"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Direcție ieșire",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Necunoscut"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Copaci plantați azi"
+      },
+      "plant_daily_co2": {
+        "name": "Reducere CO₂ azi"
+      },
+      "plant_inverter_status": {
+        "name": "Stare invertor",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarmă",
+          "offline": "Offline",
+          "unknown": "Necunoscut"
+        }
+      }
+    }
   }
 }

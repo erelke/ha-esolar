@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Isem tal-utent",
+          "password": "Password",
+          "region": "Agħżel ir-reġjun fejn jinsab is-sistema solari tiegħek."
+        },
+        "description": "Daħħal l-username u l-password tal-kont SAJ eSolar tiegħek",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Siti"
+        },
+        "description": "Agħżel is-siti li trid timmonitorja",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Isem tal-utent",
+          "password": "Password",
+          "region": "Agħżel ir-reġjun fejn jinsab is-sistema solari tiegħek."
+        },
+        "description": "Daħħal l-username u l-password tal-kont SAJ eSolar tiegħek",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Siti"
+        },
+        "description": "Agħżel is-siti li trid timmonitorja",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Ma jistax jaqbad",
+      "invalid_auth": "Awtentikazzjoni invalida",
+      "unknown": "Mhux magħruf",
+      "no_sites": "L-ebda sit monitorat magħżul"
+    },
+    "abort": {
+      "already_configured": "Diġà konfigurat",
+      "reconfigure_successful": "Konfigurati mill-ġdid b'suċċess"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Impiant SAJ mhux aktar aċċessibbli",
+      "description": "L-impjanti li ġejjin huma konfigurati f'Home Assistant iżda mhumiex aktar disponibbli fuq il-kont SAJ tiegħek: {plants}. Iftaħ Ikkonfigura u neħħihom mis-siti monitorati."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Ewropa – Għal utenti fl-Ewropa",
+        "in": "Internazzjonali – Għal utenti f'North America, South America, Afrika, Oceania u reġjuni oħra tal-Asja",
+        "cn": "Ċina – Għal utenti fiċ-Ċina"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Uri sensuri tal-inverter",
+          "show_pv_grid_data": "Uri attributi PV u tal-grid",
+          "plant_update_interval": "Intervall ta' aġġornament tal-impiant (minuti)"
+        },
+        "description": "Agħżel l-għażliet",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Potenza tal-grid"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Potenza tal-grid (assoluta)"
+      },
+      "plant_battery_power": {
+        "name": "Potenza tal-batterija"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Potenza tal-batterija (assoluta)"
+      },
+      "plant_pv_power": {
+        "name": "Potenza PV"
+      },
+      "plant_load_power": {
+        "name": "Potenza tal-konsum"
+      },
+      "plant_self_use_rate": {
+        "name": "Rata ta' self-use"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Kapacità użabbli tal-batterija"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Ħin li fadal tal-batterija"
+      },
+      "plant_operating_mode": {
+        "name": "Mod ta' operazzjoni"
+      },
+      "plant_device_online": {
+        "name": "Apparat online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Direzzjoni PV",
+        "state": {
+          "importing": "Importazzjoni",
+          "standby": "Standby",
+          "exporting": "Esportazzjoni",
+          "unknown": "Mhux magħruf"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Direzzjoni tal-grid",
+        "state": {
+          "importing": "Importazzjoni",
+          "standby": "Standby",
+          "exporting": "Esportazzjoni",
+          "unknown": "Mhux magħruf"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Direzzjoni tal-batterija",
+        "state": {
+          "charging": "Qed jiċċarġja",
+          "idle": "Idle",
+          "discharging": "Qed jiżżer",
+          "unknown": "Mhux magħruf"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Direzzjoni tal-output",
+        "state": {
+          "importing": "Importazzjoni",
+          "standby": "Standby",
+          "exporting": "Esportazzjoni",
+          "unknown": "Mhux magħruf"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Siġar implantati llum"
+      },
+      "plant_daily_co2": {
+        "name": "Tnaqqis ta' CO₂ llum"
+      },
+      "plant_inverter_status": {
+        "name": "Status tal-inverter",
+        "state": {
+          "normal": "Normali",
+          "alarm": "Allarm",
+          "offline": "Offline",
+          "unknown": "Mhux magħruf"
+        }
+      }
+    }
+  }
+}

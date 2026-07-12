@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Потужність мережі"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Потужність мережі (абсолютна)"
+      },
+      "plant_battery_power": {
+        "name": "Потужність акумулятора"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Потужність акумулятора (абсолютна)"
+      },
+      "plant_pv_power": {
+        "name": "PV потужність"
+      },
+      "plant_load_power": {
+        "name": "Потужність навантаження"
+      },
+      "plant_self_use_rate": {
+        "name": "Рівень власного споживання"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Корисна ємність акумулятора"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Час роботи акумулятора"
+      },
+      "plant_operating_mode": {
+        "name": "Режим роботи"
+      },
+      "plant_device_online": {
+        "name": "Пристрій онлайн",
+        "state": {
+          "online": "Онлайн",
+          "offline": "Офлайн"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Напрямок PV",
+        "state": {
+          "importing": "Імпорт",
+          "standby": "Очікування",
+          "exporting": "Експорт",
+          "unknown": "Невідомо"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Напрямок мережі",
+        "state": {
+          "importing": "Імпорт",
+          "standby": "Очікування",
+          "exporting": "Експорт",
+          "unknown": "Невідомо"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Напрямок акумулятора",
+        "state": {
+          "charging": "Зарядка",
+          "idle": "Простій",
+          "discharging": "Розряд",
+          "unknown": "Невідомо"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Напрямок виходу",
+        "state": {
+          "importing": "Імпорт",
+          "standby": "Очікування",
+          "exporting": "Експорт",
+          "unknown": "Невідомо"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Дерев посаджено сьогодні"
+      },
+      "plant_daily_co2": {
+        "name": "Зменшення CO₂ сьогодні"
+      },
+      "plant_inverter_status": {
+        "name": "Статус інвертора",
+        "state": {
+          "normal": "Нормально",
+          "alarm": "Тривога",
+          "offline": "Офлайн",
+          "unknown": "Невідомо"
+        }
+      }
+    }
   }
 }

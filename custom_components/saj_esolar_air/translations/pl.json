@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Moc sieci"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Moc sieci (bezwzględna)"
+      },
+      "plant_battery_power": {
+        "name": "Moc baterii"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Moc baterii (bezwzględna)"
+      },
+      "plant_pv_power": {
+        "name": "Moc PV"
+      },
+      "plant_load_power": {
+        "name": "Moc obciążenia"
+      },
+      "plant_self_use_rate": {
+        "name": "Wskaźnik autokonsumpcji"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Użyteczna pojemność baterii"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Pozostały czas baterii"
+      },
+      "plant_operating_mode": {
+        "name": "Tryb pracy"
+      },
+      "plant_device_online": {
+        "name": "Urządzenie online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Kierunek PV",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Nieznany"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Kierunek sieci",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Nieznany"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Kierunek baterii",
+        "state": {
+          "charging": "Ładowanie",
+          "idle": "Bezczynny",
+          "discharging": "Rozładowanie",
+          "unknown": "Nieznany"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Kierunek wyjścia",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Nieznany"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Drzewa posadzone dziś"
+      },
+      "plant_daily_co2": {
+        "name": "Redukcja CO₂ dziś"
+      },
+      "plant_inverter_status": {
+        "name": "Status falownika",
+        "state": {
+          "normal": "Normalny",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Nieznany"
+        }
+      }
+    }
   }
 }

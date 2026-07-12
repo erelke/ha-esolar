@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Potencia de red"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Potencia de red (absoluta)"
+      },
+      "plant_battery_power": {
+        "name": "Potencia de batería"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Potencia de batería (absoluta)"
+      },
+      "plant_pv_power": {
+        "name": "Potencia FV"
+      },
+      "plant_load_power": {
+        "name": "Potencia de consumo"
+      },
+      "plant_self_use_rate": {
+        "name": "Tasa de autoconsumo"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capacidad usable de batería"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Tiempo restante de batería"
+      },
+      "plant_operating_mode": {
+        "name": "Modo de operación"
+      },
+      "plant_device_online": {
+        "name": "Dispositivo en línea",
+        "state": {
+          "online": "En línea",
+          "offline": "Desconectado"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Dirección FV",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Desconocido"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Dirección de red",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Desconocido"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Dirección de batería",
+        "state": {
+          "charging": "Cargando",
+          "idle": "Inactivo",
+          "discharging": "Descargando",
+          "unknown": "Desconocido"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Dirección de salida",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Desconocido"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Árboles plantados hoy"
+      },
+      "plant_daily_co2": {
+        "name": "Reducción de CO₂ hoy"
+      },
+      "plant_inverter_status": {
+        "name": "Estado del inversor",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarma",
+          "offline": "Desconectado",
+          "unknown": "Desconocido"
+        }
+      }
+    }
   }
 }

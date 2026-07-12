@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Nome de usuario",
+          "password": "Contrasinal",
+          "region": "Seleccione a rexión onde se atopa o seu sistema solar."
+        },
+        "description": "Introduza o nome de usuario e o contrasinal da súa conta SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Instalacións"
+        },
+        "description": "Seleccione as instalacións a monitorizar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Nome de usuario",
+          "password": "Contrasinal",
+          "region": "Seleccione a rexión onde se atopa o seu sistema solar."
+        },
+        "description": "Introduza o nome de usuario e o contrasinal da súa conta SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Instalacións"
+        },
+        "description": "Seleccione as instalacións a monitorizar",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Non se pode conectar",
+      "invalid_auth": "Autenticación non válida",
+      "unknown": "Descoñecido",
+      "no_sites": "Non se seleccionaron instalacións monitorizadas"
+    },
+    "abort": {
+      "already_configured": "Xa configurado",
+      "reconfigure_successful": "Reconfiguración correcta"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "A planta SAJ xa non é accesible",
+      "description": "As plantas seguintes están configuradas en Home Assistant pero xa non están dispoñibles na súa conta SAJ: {plants}. Abra Configurar e elimíneas das instalacións monitorizadas."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Para usuarios en Europa",
+        "in": "Internacional – Para usuarios en Norteamérica, Sudamérica, África, Oceanía e outras rexións de Asia",
+        "cn": "China – Para usuarios en China"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Mostrar sensores do inversor",
+          "show_pv_grid_data": "Mostrar atributos fotovoltaicos e de rede",
+          "plant_update_interval": "Intervalo de actualización da planta (minutos)"
+        },
+        "description": "Seleccionar opcións",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Potencia da rede"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Potencia da rede (absoluta)"
+      },
+      "plant_battery_power": {
+        "name": "Potencia da batería"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Potencia da batería (absoluta)"
+      },
+      "plant_pv_power": {
+        "name": "Potencia PV"
+      },
+      "plant_load_power": {
+        "name": "Potencia de consumo"
+      },
+      "plant_self_use_rate": {
+        "name": "Taxa de autoconsumo"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capacidade útil da batería"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Tempo restante da batería"
+      },
+      "plant_operating_mode": {
+        "name": "Modo de funcionamento"
+      },
+      "plant_device_online": {
+        "name": "Dispositivo en liña",
+        "state": {
+          "online": "Online",
+          "offline": "Desconectado"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Dirección PV",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Descoñecido"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Dirección da rede",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Descoñecido"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Dirección da batería",
+        "state": {
+          "charging": "Cargando",
+          "idle": "Inactivo",
+          "discharging": "Descargando",
+          "unknown": "Descoñecido"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Dirección de saída",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Descoñecido"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Árbores plantadas hoxe"
+      },
+      "plant_daily_co2": {
+        "name": "Redución de CO₂ hoxe"
+      },
+      "plant_inverter_status": {
+        "name": "Estado do inversor",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarma",
+          "offline": "Desconectado",
+          "unknown": "Descoñecido"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Потребителско име",
+          "password": "Парола",
+          "region": "Изберете региона, в който се намира вашата слънчева система."
+        },
+        "description": "Въведете потребителско име и парола за вашия SAJ eSolar акаунт",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Обекти"
+        },
+        "description": "Изберете обекти за наблюдение",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Потребителско име",
+          "password": "Парола",
+          "region": "Изберете региона, в който се намира вашата слънчева система."
+        },
+        "description": "Въведете потребителско име и парола за вашия SAJ eSolar акаунт",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Обекти"
+        },
+        "description": "Изберете обекти за наблюдение",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Не може да се установи връзка",
+      "invalid_auth": "Невалидно удостоверяване",
+      "unknown": "Неизвестно",
+      "no_sites": "Не са избрани наблюдавани обекти"
+    },
+    "abort": {
+      "already_configured": "Вече е конфигурирано",
+      "reconfigure_successful": "Успешно преконфигуриране"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ обектът вече не е достъпен",
+      "description": "Следните обекти са конфигурирани в Home Assistant, но вече не са налични във вашия SAJ акаунт: {plants}. Отворете Конфигуриране и ги премахнете от наблюдаваните обекти."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Европа – За потребители в Европа",
+        "in": "Международен – За потребители в Северна Америка, Южна Америка, Африка, Океания и други региони в Азия",
+        "cn": "Китай – За потребители в Китай"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Показване на сензори на инвертора",
+          "show_pv_grid_data": "Показване на PV и мрежови атрибути",
+          "plant_update_interval": "Интервал на актуализация на обекта (минути)"
+        },
+        "description": "Изберете опции",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Мощност от мрежата"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Мощност от мрежата (абсолютна)"
+      },
+      "plant_battery_power": {
+        "name": "Мощност на батерията"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Мощност на батерията (абсолютна)"
+      },
+      "plant_pv_power": {
+        "name": "PV мощност"
+      },
+      "plant_load_power": {
+        "name": "Мощност на натоварване"
+      },
+      "plant_self_use_rate": {
+        "name": "Процент собствено потребление"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Полезен капацитет на батерията"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Оставащо време на батерията"
+      },
+      "plant_operating_mode": {
+        "name": "Режим на работа"
+      },
+      "plant_device_online": {
+        "name": "Устройство online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV посока",
+        "state": {
+          "importing": "Внос",
+          "standby": "Готовност",
+          "exporting": "Износ",
+          "unknown": "Неизвестно"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Посока на мрежата",
+        "state": {
+          "importing": "Внос",
+          "standby": "Готовност",
+          "exporting": "Износ",
+          "unknown": "Неизвестно"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Посока на батерията",
+        "state": {
+          "charging": "Зареждане",
+          "idle": "Неактивен",
+          "discharging": "Разреждане",
+          "unknown": "Неизвестно"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Изходна посока",
+        "state": {
+          "importing": "Внос",
+          "standby": "Готовност",
+          "exporting": "Износ",
+          "unknown": "Неизвестно"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Дървета, засадени днес"
+      },
+      "plant_daily_co2": {
+        "name": "Намаление на CO₂ днес"
+      },
+      "plant_inverter_status": {
+        "name": "Статус на инвертора",
+        "state": {
+          "normal": "Нормален",
+          "alarm": "Аларма",
+          "offline": "Offline",
+          "unknown": "Неизвестно"
+        }
+      }
+    }
+  }
+}

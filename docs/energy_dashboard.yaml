@@ -1,0 +1,26 @@
+# Example Home Assistant Energy Dashboard configuration for SAJ eSolar Air
+# Replace entity IDs with your plant name (slugified by Home Assistant).
+
+energy:
+  solar_production:
+    - entity: sensor.home_solar_plant_energy_today
+  grid_consumption:
+    - entity: sensor.home_solar_today_buy_energy
+  grid_export:
+    - entity: sensor.home_solar_today_sell_energy
+  home_consumption:
+    - entity: sensor.home_solar_today_load_energy
+  battery:
+    - entity: sensor.home_solar_battery_state_of_charge
+  battery_consumption:
+    - entity: sensor.home_solar_today_discharge_energy
+  battery_production:
+    - entity: sensor.home_solar_today_charge_energy
+
+# Optional: dedicated dashboard sensors (entity_id pattern: sensor.<plant_slug>_<translation_key>)
+# sensor.home_solar_grid_power              # signed grid power (W)
+# sensor.home_solar_pv_power                # current PV power (W)
+# sensor.home_solar_load_power              # current load power (W)
+# sensor.home_solar_self_use_rate           # self-consumption rate (%)
+# sensor.home_solar_device_online           # online / offline
+# sensor.home_solar_inverter_status         # normal / alarm / offline

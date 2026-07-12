@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "region": "Selecteer de regio waar uw zonne-energiesysteem zich bevindt."
+        },
+        "description": "Voer de gebruikersnaam en het wachtwoord van uw SAJ eSolar-account in",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Locaties"
+        },
+        "description": "Selecteer te monitoren locaties",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Gebruikersnaam",
+          "password": "Wachtwoord",
+          "region": "Selecteer de regio waar uw zonne-energiesysteem zich bevindt."
+        },
+        "description": "Voer de gebruikersnaam en het wachtwoord van uw SAJ eSolar-account in",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Locaties"
+        },
+        "description": "Selecteer te monitoren locaties",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan geen verbinding maken",
+      "invalid_auth": "Ongeldige authenticatie",
+      "unknown": "Onbekende fout",
+      "no_sites": "Geen gemonitorde locaties geselecteerd"
+    },
+    "abort": {
+      "already_configured": "Al geconfigureerd",
+      "reconfigure_successful": "Succesvol opnieuw geconfigureerd"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ-installatie niet meer toegankelijk",
+      "description": "De volgende installatie(s) zijn geconfigureerd in Home Assistant, maar zijn niet meer beschikbaar in uw SAJ-account: {plants}. Open Configureren en verwijder ze uit de gemonitorde locaties."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Voor gebruikers in Europa",
+        "in": "Internationaal – Voor gebruikers in Noord-Amerika, Zuid-Amerika, Afrika, Oceanië en andere regio's in Azië",
+        "cn": "China – Voor gebruikers in China"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Omzettersensoren tonen",
+          "show_pv_grid_data": "Photovoltaïsche en netwerkattributen tonen",
+          "plant_update_interval": "Update-interval installatie (minuten)"
+        },
+        "description": "Opties selecteren",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Netvermogen"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Netvermogen (absoluut)"
+      },
+      "plant_battery_power": {
+        "name": "Batterijvermogen"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Batterijvermogen (absoluut)"
+      },
+      "plant_pv_power": {
+        "name": "PV-vermogen"
+      },
+      "plant_load_power": {
+        "name": "Verbruiksvermogen"
+      },
+      "plant_self_use_rate": {
+        "name": "Zelfverbruikspercentage"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Bruikbare batterijcapaciteit"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Resterende batterijtijd"
+      },
+      "plant_operating_mode": {
+        "name": "Bedrijfsmodus"
+      },
+      "plant_device_online": {
+        "name": "Apparaat online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV-richting",
+        "state": {
+          "importing": "Importeren",
+          "standby": "Stand-by",
+          "exporting": "Exporteren",
+          "unknown": "Onbekend"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Netrichting",
+        "state": {
+          "importing": "Importeren",
+          "standby": "Stand-by",
+          "exporting": "Exporteren",
+          "unknown": "Onbekend"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Batterijrichting",
+        "state": {
+          "charging": "Laden",
+          "idle": "Inactief",
+          "discharging": "Ontladen",
+          "unknown": "Onbekend"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Uitgangsrichting",
+        "state": {
+          "importing": "Importeren",
+          "standby": "Stand-by",
+          "exporting": "Exporteren",
+          "unknown": "Onbekend"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Vandaag geplante bomen"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂-reductie vandaag"
+      },
+      "plant_inverter_status": {
+        "name": "Omvormerstatus",
+        "state": {
+          "normal": "Normaal",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Onbekend"
+        }
+      }
+    }
+  }
+}

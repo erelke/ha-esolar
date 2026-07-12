@@ -8,14 +8,14 @@
           "region": "Kérlek, válaszd ki a régiót, amelyben a napelemes rendszered található."
         },
         "description": "Kérlek add meg a SAJ eSolar felhasználóneved és jelszavad!",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
-      "sites":{
-        "data":{
+      "sites": {
+        "data": {
           "monitored_sites": "Rendszereket"
         },
         "description": "Válaszd ki a megjelenítendő rendszereket",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
       "reconfigure": {
         "data": {
@@ -24,14 +24,14 @@
           "region": "Kérlek, válaszd ki a régiót, amelyben a napelemes rendszered található."
         },
         "description": "Kérlek add meg a SAJ eSolar felhasználóneved és jelszavad!",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
-      "reconfigure_sites":{
-        "data":{
+      "reconfigure_sites": {
+        "data": {
           "monitored_sites": "Rendszereket"
         },
         "description": "Válaszd ki a megjelenítendő rendszereket",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -70,7 +70,99 @@
         },
         "description": "Válasz az alábbiakból",
         "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Hálózati teljesítmény"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Hálózati teljesítmény (abszolút)"
+      },
+      "plant_battery_power": {
+        "name": "Akkumulátor teljesítmény"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Akkumulátor teljesítmény (abszolút)"
+      },
+      "plant_pv_power": {
+        "name": "Napelem teljesítmény"
+      },
+      "plant_load_power": {
+        "name": "Fogyasztás teljesítmény"
+      },
+      "plant_self_use_rate": {
+        "name": "Önfogyasztási arány"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Használható akkumulátor kapacitás"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Akkumulátor hátralévő idő"
+      },
+      "plant_operating_mode": {
+        "name": "Üzemmód"
+      },
+      "plant_device_online": {
+        "name": "Eszköz online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
         }
+      },
+      "plant_pv_direction": {
+        "name": "Napelem irány",
+        "state": {
+          "importing": "Import",
+          "standby": "Készenlét",
+          "exporting": "Export",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Hálózat irány",
+        "state": {
+          "importing": "Import",
+          "standby": "Készenlét",
+          "exporting": "Export",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Akkumulátor irány",
+        "state": {
+          "charging": "Töltés",
+          "idle": "Tétlen",
+          "discharging": "Merítés",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Kimenet irány",
+        "state": {
+          "importing": "Import",
+          "standby": "Készenlét",
+          "exporting": "Export",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Ma ültetett fák"
+      },
+      "plant_daily_co2": {
+        "name": "Mai CO₂ csökkentés"
+      },
+      "plant_inverter_status": {
+        "name": "Inverter státusz",
+        "state": {
+          "normal": "Normál",
+          "alarm": "Riasztás",
+          "offline": "Offline",
+          "unknown": "Ismeretlen"
+        }
+      }
     }
   }
 }

@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Erabiltzaile-izena",
+          "password": "Pasahitza",
+          "region": "Hautatu zure eguzki-sistema dagoen eskualdea."
+        },
+        "description": "Sartu SAJ eSolar kontuko erabiltzaile-izena eta pasahitza",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Instalazioak"
+        },
+        "description": "Hautatu monitorizatu beharreko instalazioak",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Erabiltzaile-izena",
+          "password": "Pasahitza",
+          "region": "Hautatu zure eguzki-sistema dagoen eskualdea."
+        },
+        "description": "Sartu SAJ eSolar kontuko erabiltzaile-izena eta pasahitza",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Instalazioak"
+        },
+        "description": "Hautatu monitorizatu beharreko instalazioak",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Ezin da konektatu",
+      "invalid_auth": "Autentifikazio baliogabea",
+      "unknown": "Ezezaguna",
+      "no_sites": "Ez da monitorizatutako instalaziorik hautatu"
+    },
+    "abort": {
+      "already_configured": "Dagoeneko konfiguratuta",
+      "reconfigure_successful": "Berriro konfiguratzea arrakastatsua"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ planta ez dago eskuragarri",
+      "description": "Plantak hauek Home Assistant-en konfiguratuta daude baina jada ez daude eskuragarri zure SAJ kontuan: {plants}. Ireki Konfiguratu eta kendu monitorizatutako instalazioetatik."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Europako erabiltzaileentzat",
+        "in": "Nazioartekoa – Ipar Amerikako, Hego Amerikako, Afrikako, Ozeaniako eta Asiako beste eskualdeetako erabiltzaileentzat",
+        "cn": "Txina – Txinako erabiltzaileentzat"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Erakutsi inbertsore-sentsoreak",
+          "show_pv_grid_data": "Erakutsi PV eta sarearen atributuak",
+          "plant_update_interval": "Plantaren eguneratze-tartea (minutuak)"
+        },
+        "description": "Hautatu aukerak",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Sareko potentzia"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Sareko potentzia (absolutua)"
+      },
+      "plant_battery_power": {
+        "name": "Bateriaren potentzia"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Bateriaren potentzia (absolutua)"
+      },
+      "plant_pv_power": {
+        "name": "PV potentzia"
+      },
+      "plant_load_power": {
+        "name": "Kontsumo-potentzia"
+      },
+      "plant_self_use_rate": {
+        "name": "Autokontsumo-tasa"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Bateriaren erabilgarri dagoen edukiera"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Bateriaren geratzen den denbora"
+      },
+      "plant_operating_mode": {
+        "name": "Funtzionamendu-modua"
+      },
+      "plant_device_online": {
+        "name": "Gailua online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV norabidea",
+        "state": {
+          "importing": "Inportazioa",
+          "standby": "Itxaron",
+          "exporting": "Esportazioa",
+          "unknown": "Ezezaguna"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Sarearen norabidea",
+        "state": {
+          "importing": "Inportazioa",
+          "standby": "Itxaron",
+          "exporting": "Esportazioa",
+          "unknown": "Ezezaguna"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Bateriaren norabidea",
+        "state": {
+          "charging": "Kargatzen",
+          "idle": "Inaktibo",
+          "discharging": "Deskargatzen",
+          "unknown": "Ezezaguna"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Irteerako norabidea",
+        "state": {
+          "importing": "Inportazioa",
+          "standby": "Itxaron",
+          "exporting": "Esportazioa",
+          "unknown": "Ezezaguna"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Gaur landatutako zuhaitzak"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ murrizketa gaur"
+      },
+      "plant_inverter_status": {
+        "name": "Inbertsorearen egoera",
+        "state": {
+          "normal": "Normala",
+          "alarm": "Alarma",
+          "offline": "Offline",
+          "unknown": "Ezezaguna"
+        }
+      }
+    }
+  }
+}

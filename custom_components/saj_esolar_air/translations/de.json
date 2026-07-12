@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Netzleistung"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Netzleistung (absolut)"
+      },
+      "plant_battery_power": {
+        "name": "Batterieleistung"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Batterieleistung (absolut)"
+      },
+      "plant_pv_power": {
+        "name": "PV-Leistung"
+      },
+      "plant_load_power": {
+        "name": "Verbrauchsleistung"
+      },
+      "plant_self_use_rate": {
+        "name": "Eigenverbrauchsquote"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Nutzbare Batteriekapazität"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Verbleibende Batteriezeit"
+      },
+      "plant_operating_mode": {
+        "name": "Betriebsmodus"
+      },
+      "plant_device_online": {
+        "name": "Gerät online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV-Richtung",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Unbekannt"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Netzrichtung",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Unbekannt"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Batterierichtung",
+        "state": {
+          "charging": "Laden",
+          "idle": "Leerlauf",
+          "discharging": "Entladen",
+          "unknown": "Unbekannt"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Ausgangsrichtung",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Unbekannt"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Heute gepflanzte Bäume"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂-Reduktion heute"
+      },
+      "plant_inverter_status": {
+        "name": "Wechselrichterstatus",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Unbekannt"
+        }
+      }
+    }
   }
 }

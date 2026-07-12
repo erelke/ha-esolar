@@ -2,13 +2,87 @@
 
 ![elekeeper](https://github.com/erelke/ha-esolar/blob/main/images/elekeeper.png)
 
-This integration is based on [faanskit/ha-esolar](https://github.com/faanskit/ha-esolar). It is adapted to my needs. If you need it, use it.
+This integration connects SAJ/Elekeeper cloud systems to Home Assistant. It supports **on-grid (R5)**, **storage (H1/H2)**, **AC coupling**, **parallel plants**, **SEC meters**, and **external battery packs** — with a device hierarchy designed for both simple and complex installations.
 
-This version is based on the new _Elekeeper_ app and the new SAJ portal. It uses password encryption and signing of api requests. I extracted the necessary keys from the SAJ portal source code. This can change at any time and then this integration will not work. Until then, use it.
+## Why this integration?
+
+- **Multi-system support** — R5, H1, H2, meters, EMS, and multi-battery setups in one integration
+- **Energy Dashboard ready** — dedicated plant sensors with correct `device_class` / `state_class` for solar, grid, load, and battery energy
+- **Clear device tree** — plant → inverter / meter / battery devices with `via_device` linking
+- **Rich detail when needed** — optional inverter sensors and PV/grid attributes without flooding every setup
+- **Robust cloud auth** — token cache, automatic re-login, captcha guidance, diagnostics export
+- **33 languages** — full UI, config flow, and Energy Dashboard sensor translations for Europe (plus Chinese for the CN node)
+
+This version uses the Elekeeper portal API (password encryption and request signing). Keys are extracted from the portal; if SAJ changes them, an update may be required.
+
+## Languages
+
+Home Assistant picks the matching locale automatically from your profile language.
+
+| Region | Locales |
+|--------|---------|
+| **Western & Central Europe** | English (`en`), German (`de`), French (`fr`), Dutch (`nl`) |
+| **Iberia** | Spanish (`es`), Portuguese (`pt`), Catalan (`ca`), Basque (`eu`), Galician (`gl`) |
+| **Nordic & Baltic** | Danish (`da`), Norwegian Bokmål (`nb`), Swedish (`sv`), Finnish (`fi`), Icelandic (`is`), Estonian (`et`), Latvian (`lv`), Lithuanian (`lt`) |
+| **Central & Eastern Europe** | Polish (`pl`), Czech (`cz`), Slovak (`sk`), Hungarian (`hu`), Romanian (`ro`), Bulgarian (`bg`), Ukrainian (`ua`), Serbian (`sr`), Croatian (`hr`), Slovenian (`sl`) |
+| **Southern Europe** | Italian (`it`), Greek (`el`), Maltese (`mt`) |
+| **Celtic** | Irish (`ga`), Welsh (`cy`) |
+| **Asia (CN node)** | Chinese (`cn`) |
+
+All listed locales include config flow, options, repair issues, region selector, and dashboard entity names/states.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=erelke&repository=ha-esolar&category=integration)
 
 [![Donate](https://img.shields.io/badge/Donate-BuyMeCoffe-green.svg)](https://www.buymeacoffee.com/erelke)
+
+## Device hierarchy
+
+| Device | Example | Notes |
+|--------|---------|-------|
+| **Plant** | `Home Solar` | System overview, energy totals, dashboard power sensors |
+| **Inverter** | `Inverter M5370G…` | Per-inverter detail (optional, configurable) |
+| **Battery** | `Home Solar Battery 1` | External or builtin packs when reported by the API |
+| **Meter** | `Meter …` | SEC/module meters when installed |
+
+On **R5 on-grid** plants fewer battery and SEC entities appear — the integration only creates sensors when the API provides data.
+
+## Energy Dashboard
+
+Dedicated plant sensors (translated, per plant):
+
+| Sensor | Unit | Energy Dashboard use |
+|--------|------|----------------------|
+| Grid power | W | Live monitoring (signed: import + / export −) |
+| PV power | W | Solar flow |
+| Load power | W | Consumption |
+| Plant energy today / buy / sell / load | kWh | Production, grid, home |
+| Battery SOC / charge / discharge | % / kWh | Storage (H1/H2 only) |
+| Self-use rate | % | Autoconsumption |
+| Device online / Inverter status | — | Health |
+
+Example configuration: [`docs/energy_dashboard.yaml`](docs/energy_dashboard.yaml)
+
+![Energy Dashboard example](images/energy_dashboard_demo.png)
+
+```yaml
+energy:
+  solar_production:
+    - entity: sensor.home_solar_plant_energy_today
+  grid_consumption:
+    - entity: sensor.home_solar_today_buy_energy
+  grid_export:
+    - entity: sensor.home_solar_today_sell_energy
+  home_consumption:
+    - entity: sensor.home_solar_today_load_energy
+  battery:
+    - entity: sensor.home_solar_battery_state_of_charge
+  battery_consumption:
+    - entity: sensor.home_solar_today_discharge_energy
+  battery_production:
+    - entity: sensor.home_solar_today_charge_energy
+```
+
+Replace entity IDs with your plant slug from **Settings → Devices & services → Entities**.
 
 Integration:
 
@@ -42,9 +116,9 @@ In case of an error or improvement request, please send the diagnostic data as w
 This integration uses cloud polling from the SAJ eSolar portal using a reverse engineered private API. 
 Thanks to [SAJ eSolar](https://github.com/djansen1987/SAJeSolar) for inspiration.
 
-This integration today support SAJ R5 and SAJ H1. SAJ SEC has not yet been implemented mainly due to lack of access to a SEC system,
+This integration is based on [faanskit/ha-esolar](https://github.com/faanskit/ha-esolar) and inspired by [SAJeSolar](https://github.com/djansen1987/SAJeSolar).
 
-The focus on this integration is to reduce the amount of sensors published while at the same time maximize the information available and provide them as attributes. 
+The focus remains to avoid hundreds of entities on large systems: core metrics are **dedicated sensors** (Energy Dashboard, automations), while deep inverter/PV/grid detail stays in **attributes** when enabled in options. 
 
 As an example, the H1 Inverter Power sensor has 50 information elements (15 x 3 + 5) published as attributes. This is a bit against the nature of Home Assistant development, but given a system comprising two plants, one R5 and two H1 - the amount of sensors would easly be in the hundreds. Therefore, this integration aims to publish only what is relevant as sensors.
 

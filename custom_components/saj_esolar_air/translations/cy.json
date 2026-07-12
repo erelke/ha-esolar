@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Enw defnyddiwr",
+          "password": "Cyfrinair",
+          "region": "Dewiswch y rhanbarth lle mae'ch system ynni solar."
+        },
+        "description": "Rhowch enw defnyddiwr a chyfrinair eich cyfrif SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Safleoedd"
+        },
+        "description": "Dewiswch safleoedd i'w monitro",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Enw defnyddiwr",
+          "password": "Cyfrinair",
+          "region": "Dewiswch y rhanbarth lle mae'ch system ynni solar."
+        },
+        "description": "Rhowch enw defnyddiwr a chyfrinair eich cyfrif SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Safleoedd"
+        },
+        "description": "Dewiswch safleoedd i'w monitro",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Methu cysylltu",
+      "invalid_auth": "Dilysu annilys",
+      "unknown": "Anhysbys",
+      "no_sites": "Dim safleoedd a fonitrir wedi'u dewis"
+    },
+    "abort": {
+      "already_configured": "Eisoes wedi'i ffurfweddu",
+      "reconfigure_successful": "Ailffurfweddu'n llwyddiannus"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Nid yw'r safle SAJ ar gael mwyach",
+      "description": "Mae'r safleoedd canlynol wedi'u ffurfweddu yn Home Assistant ond nid ydynt ar gael ar eich cyfrif SAJ mwyach: {plants}. Agorwch Ffurfweddu a'u tynnu o safleoedd a fonitrir."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Ewrop – Ar gyfer defnyddwyr yn Ewrop",
+        "in": "Rhyngwladol – Ar gyfer defnyddwyr yn Gogledd America, De America, Affrica, Oceania a rhanbarthau eraill Asia",
+        "cn": "Tsieina – Ar gyfer defnyddwyr yn Tsieina"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Dangos synwyryddion cyfnewidydd",
+          "show_pv_grid_data": "Dangos priodweddau PV a rhwydwaith",
+          "plant_update_interval": "Cyfwng diweddaru safle (munudau)"
+        },
+        "description": "Dewis opsiynau",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Pŵer rhwydwaith"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Pŵer rhwydwaith (absoliwt)"
+      },
+      "plant_battery_power": {
+        "name": "Pŵer batri"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Pŵer batri (absoliwt)"
+      },
+      "plant_pv_power": {
+        "name": "Pŵer PV"
+      },
+      "plant_load_power": {
+        "name": "Pŵer defnydd"
+      },
+      "plant_self_use_rate": {
+        "name": "Cyfradd hunan-defnydd"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capasiti batri y gellir ei ddefnyddio"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Amser batri sy'n weddill"
+      },
+      "plant_operating_mode": {
+        "name": "Modd gweithredu"
+      },
+      "plant_device_online": {
+        "name": "Dyfais ar-lein",
+        "state": {
+          "online": "Online",
+          "offline": "All-lein"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Cyfeiriad PV",
+        "state": {
+          "importing": "Mewnforio",
+          "standby": "Ar aros",
+          "exporting": "Allforio",
+          "unknown": "Anhysbys"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Cyfeiriad rhwydwaith",
+        "state": {
+          "importing": "Mewnforio",
+          "standby": "Ar aros",
+          "exporting": "Allforio",
+          "unknown": "Anhysbys"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Cyfeiriad batri",
+        "state": {
+          "charging": "Yn gwefru",
+          "idle": "Segur",
+          "discharging": "Yn datgyfarch",
+          "unknown": "Anhysbys"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Cyfeiriad allbwn",
+        "state": {
+          "importing": "Mewnforio",
+          "standby": "Ar aros",
+          "exporting": "Allforio",
+          "unknown": "Anhysbys"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Coed wedi'u plannu heddiw"
+      },
+      "plant_daily_co2": {
+        "name": "Gostyngiad CO₂ heddiw"
+      },
+      "plant_inverter_status": {
+        "name": "Statws cyfnewidydd",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Larwm",
+          "offline": "All-lein",
+          "unknown": "Anhysbys"
+        }
+      }
+    }
+  }
+}

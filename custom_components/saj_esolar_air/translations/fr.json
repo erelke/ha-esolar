@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Puissance réseau"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Puissance réseau (absolue)"
+      },
+      "plant_battery_power": {
+        "name": "Puissance batterie"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Puissance batterie (absolue)"
+      },
+      "plant_pv_power": {
+        "name": "Puissance PV"
+      },
+      "plant_load_power": {
+        "name": "Puissance de consommation"
+      },
+      "plant_self_use_rate": {
+        "name": "Taux d'autoconsommation"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capacité batterie utilisable"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Temps restant batterie"
+      },
+      "plant_operating_mode": {
+        "name": "Mode de fonctionnement"
+      },
+      "plant_device_online": {
+        "name": "Appareil en ligne",
+        "state": {
+          "online": "En ligne",
+          "offline": "Hors ligne"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Direction PV",
+        "state": {
+          "importing": "Import",
+          "standby": "Veille",
+          "exporting": "Export",
+          "unknown": "Inconnu"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Direction réseau",
+        "state": {
+          "importing": "Import",
+          "standby": "Veille",
+          "exporting": "Export",
+          "unknown": "Inconnu"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Direction batterie",
+        "state": {
+          "charging": "Charge",
+          "idle": "Inactif",
+          "discharging": "Décharge",
+          "unknown": "Inconnu"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Direction sortie",
+        "state": {
+          "importing": "Import",
+          "standby": "Veille",
+          "exporting": "Export",
+          "unknown": "Inconnu"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Arbres plantés aujourd'hui"
+      },
+      "plant_daily_co2": {
+        "name": "Réduction CO₂ aujourd'hui"
+      },
+      "plant_inverter_status": {
+        "name": "État onduleur",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarme",
+          "offline": "Hors ligne",
+          "unknown": "Inconnu"
+        }
+      }
+    }
   }
 }

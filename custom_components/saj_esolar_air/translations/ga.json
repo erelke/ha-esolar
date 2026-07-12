@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Ainm úsáideora",
+          "password": "Pasfhocal",
+          "region": "Roghnaigh an réigiún ina bhfuil do chóras fuinnimh gréine."
+        },
+        "description": "Cuir isteach ainm úsáideora agus pasfhocal do chuntais SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Suímh"
+        },
+        "description": "Roghnaigh suímh le monatóireacht",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Ainm úsáideora",
+          "password": "Pasfhocal",
+          "region": "Roghnaigh an réigiún ina bhfuil do chóras fuinnimh gréine."
+        },
+        "description": "Cuir isteach ainm úsáideora agus pasfhocal do chuntais SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Suímh"
+        },
+        "description": "Roghnaigh suímh le monatóireacht",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Ní féidir ceangal a dhéanamh",
+      "invalid_auth": "Fíordheimhniú neamhbhailí",
+      "unknown": "Anaithnid",
+      "no_sites": "Níor roghnaíodh suímh monatóireachta"
+    },
+    "abort": {
+      "already_configured": "Cumraithe cheana",
+      "reconfigure_successful": "Athchumrú rathúil"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "Níl an planda SAJ inrochtana a thuilleadh",
+      "description": "Tá na plandaí seo a leanas cumraithe i Home Assistant ach níl siad ar fáil ar do chuntas SAJ a thuilleadh: {plants}. Oscail Cumraigh agus bain iad de na suímh faoi mhonatóireacht."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "An Eoraip – D'úsáideoirí san Eoraip",
+        "in": "Idirnáisiúnta – D'úsáideoirí i Meiriceá Thuaidh, Meiriceá Theas, an Afraic, an Aigéan Ciúin agus réigiúin eile na hÁise",
+        "cn": "An tSín – D'úsáideoirí sa tSín"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Taispeáin braiteoirí an tiontaora",
+          "show_pv_grid_data": "Taispeáin tréithe PV agus greille",
+          "plant_update_interval": "Eatramh nuashonraithe planda (nóiméid)"
+        },
+        "description": "Roghnaigh roghanna",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Cumhacht greille"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Cumhacht greille (absalóideach)"
+      },
+      "plant_battery_power": {
+        "name": "Cumhacht ceallraí"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Cumhacht ceallraí (absalóideach)"
+      },
+      "plant_pv_power": {
+        "name": "Cumhacht PV"
+      },
+      "plant_load_power": {
+        "name": "Cumhacht luchtaithe"
+      },
+      "plant_self_use_rate": {
+        "name": "Ráta féin-úsáide"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Cumas inúsáidte ceallraí"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Am fágtha sa cheallraí"
+      },
+      "plant_operating_mode": {
+        "name": "Mód oibriúcháin"
+      },
+      "plant_device_online": {
+        "name": "Gléas ar líne",
+        "state": {
+          "online": "Online",
+          "offline": "As líne"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Treo PV",
+        "state": {
+          "importing": "Iallmhairiú",
+          "standby": "Fanacht",
+          "exporting": "Onnmhairiú",
+          "unknown": "Anaithnid"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Treo greille",
+        "state": {
+          "importing": "Iallmhairiú",
+          "standby": "Fanacht",
+          "exporting": "Onnmhairiú",
+          "unknown": "Anaithnid"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Treo ceallraí",
+        "state": {
+          "charging": "Ag muirearú",
+          "idle": "Díomhaoin",
+          "discharging": "Ag díluchtú",
+          "unknown": "Anaithnid"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Treo aschuir",
+        "state": {
+          "importing": "Iallmhairiú",
+          "standby": "Fanacht",
+          "exporting": "Onnmhairiú",
+          "unknown": "Anaithnid"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Crainn curtha inniu"
+      },
+      "plant_daily_co2": {
+        "name": "Laghdaíocht CO₂ inniu"
+      },
+      "plant_inverter_status": {
+        "name": "Stádas an tiontaora",
+        "state": {
+          "normal": "Gnáth",
+          "alarm": "Aláram",
+          "offline": "As líne",
+          "unknown": "Anaithnid"
+        }
+      }
+    }
+  }
+}

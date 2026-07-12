@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Naudotojo vardas",
+          "password": "Slaptažodis",
+          "region": "Pasirinkite regioną, kuriame yra jūsų saulės energijos sistema."
+        },
+        "description": "Įveskite SAJ eSolar paskyros naudotojo vardą ir slaptažodį",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Objektai"
+        },
+        "description": "Pasirinkite stebimus objektus",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Naudotojo vardas",
+          "password": "Slaptažodis",
+          "region": "Pasirinkite regioną, kuriame yra jūsų saulės energijos sistema."
+        },
+        "description": "Įveskite SAJ eSolar paskyros naudotojo vardą ir slaptažodį",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Objektai"
+        },
+        "description": "Pasirinkite stebimus objektus",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Nepavyko prisijungti",
+      "invalid_auth": "Neteisingas autentifikavimas",
+      "unknown": "Nežinoma",
+      "no_sites": "Nepasirinkta stebimų objektų"
+    },
+    "abort": {
+      "already_configured": "Jau sukonfigūruota",
+      "reconfigure_successful": "Sėkmingai perkonfigūruota"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ objektas nebepasiekiamas",
+      "description": "Šie objektai sukonfigūruoti Home Assistant, bet nebepasiekiami jūsų SAJ paskyroje: {plants}. Atidarykite Konfigūruoti ir pašalinkite juos iš stebimų objektų."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Vartotojams Europoje",
+        "in": "Tarptautinis – Vartotojams Šiaurės Amerikoje, Pietų Amerikoje, Afrikoje, Okeanijoje ir kituose Azijos regionuose",
+        "cn": "Kinija – Vartotojams Kinijoje"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Rodyti inverterio jutiklius",
+          "show_pv_grid_data": "Rodyti saulės ir tinklo atributus",
+          "plant_update_interval": "Objekto atnaujinimo intervalas (minutės)"
+        },
+        "description": "Pasirinkite parinktis",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Tinklo galia"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Tinklo galia (absoliuti)"
+      },
+      "plant_battery_power": {
+        "name": "Baterijos galia"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Baterijos galia (absoliuti)"
+      },
+      "plant_pv_power": {
+        "name": "PV galia"
+      },
+      "plant_load_power": {
+        "name": "Vartojimo galia"
+      },
+      "plant_self_use_rate": {
+        "name": "Savarankiško vartojimo rodiklis"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Naudojama baterijos talpa"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Likęs baterijos laikas"
+      },
+      "plant_operating_mode": {
+        "name": "Darbo režimas"
+      },
+      "plant_device_online": {
+        "name": "Įrenginys online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV kryptis",
+        "state": {
+          "importing": "Importas",
+          "standby": "Budėjimas",
+          "exporting": "Eksportas",
+          "unknown": "Nežinoma"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Tinklo kryptis",
+        "state": {
+          "importing": "Importas",
+          "standby": "Budėjimas",
+          "exporting": "Eksportas",
+          "unknown": "Nežinoma"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Baterijos kryptis",
+        "state": {
+          "charging": "Krovimas",
+          "idle": "Neveikia",
+          "discharging": "Iškrovimas",
+          "unknown": "Nežinoma"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Išėjimo kryptis",
+        "state": {
+          "importing": "Importas",
+          "standby": "Budėjimas",
+          "exporting": "Eksportas",
+          "unknown": "Nežinoma"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Šiandien pasodinti medžiai"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ sumažinimas šiandien"
+      },
+      "plant_inverter_status": {
+        "name": "Inverterio būsena",
+        "state": {
+          "normal": "Normalus",
+          "alarm": "Signalizacija",
+          "offline": "Offline",
+          "unknown": "Nežinoma"
+        }
+      }
+    }
+  }
+}

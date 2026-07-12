@@ -72,5 +72,97 @@
         "title": "SAJ eSolar"
       }
     }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Mrežna snaga"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Mrežna snaga (apsolutna)"
+      },
+      "plant_battery_power": {
+        "name": "Snaga baterije"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Snaga baterije (apsolutna)"
+      },
+      "plant_pv_power": {
+        "name": "PV snaga"
+      },
+      "plant_load_power": {
+        "name": "Snaga potrošnje"
+      },
+      "plant_self_use_rate": {
+        "name": "Stopa sopstvene potrošnje"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Upotrebljivi kapacitet baterije"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Preostalo vreme baterije"
+      },
+      "plant_operating_mode": {
+        "name": "Režim rada"
+      },
+      "plant_device_online": {
+        "name": "Uređaj online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV smer",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Standby",
+          "exporting": "Izvoz",
+          "unknown": "Nepoznato"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Smer mreže",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Standby",
+          "exporting": "Izvoz",
+          "unknown": "Nepoznato"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Smer baterije",
+        "state": {
+          "charging": "Punjenje",
+          "idle": "Mirovanje",
+          "discharging": "Praznjenje",
+          "unknown": "Nepoznato"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Izlazni smer",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Standby",
+          "exporting": "Izvoz",
+          "unknown": "Nepoznato"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Drveća posađena danas"
+      },
+      "plant_daily_co2": {
+        "name": "Smanjenje CO₂ danas"
+      },
+      "plant_inverter_status": {
+        "name": "Status invertera",
+        "state": {
+          "normal": "Normalno",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Nepoznato"
+        }
+      }
+    }
   }
 }

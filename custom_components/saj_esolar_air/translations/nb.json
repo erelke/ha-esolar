@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord",
+          "region": "Velg regionen der solenergianlegget ditt befinner seg."
+        },
+        "description": "Skriv inn brukernavn og passord for SAJ eSolar-kontoen din",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Anlegg"
+        },
+        "description": "Velg anlegg som skal overvåkes",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Brukernavn",
+          "password": "Passord",
+          "region": "Velg regionen der solenergianlegget ditt befinner seg."
+        },
+        "description": "Skriv inn brukernavn og passord for SAJ eSolar-kontoen din",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Anlegg"
+        },
+        "description": "Velg anlegg som skal overvåkes",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Kan ikke koble til",
+      "invalid_auth": "Ugyldig autentisering",
+      "unknown": "Ukjent feil",
+      "no_sites": "Ingen overvåkede anlegg valgt"
+    },
+    "abort": {
+      "already_configured": "Allerede konfigurert",
+      "reconfigure_successful": "Rekonfigurert"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ-anlegg ikke lenger tilgjengelig",
+      "description": "Følgende anlegg er konfigurert i Home Assistant, men er ikke lenger tilgjengelige på SAJ-kontoen din: {plants}. Åpne Konfigurer, og fjern dem fra overvåkede anlegg."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – For brukere i Europa",
+        "in": "Internasjonal – For brukere i Nord-Amerika, Sør-Amerika, Afrika, Oceana og andre regioner i Asia",
+        "cn": "Kina – For brukere i Kina"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Vis inverter-sensorer",
+          "show_pv_grid_data": "Vis solcelle- og nettattributter",
+          "plant_update_interval": "Oppdateringsintervall for anlegg (minutter)"
+        },
+        "description": "Velg alternativer",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Nettleveranse"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Nettleveranse (absolutt)"
+      },
+      "plant_battery_power": {
+        "name": "Batterieffekt"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Batterieffekt (absolutt)"
+      },
+      "plant_pv_power": {
+        "name": "PV-effekt"
+      },
+      "plant_load_power": {
+        "name": "Forbrukseffekt"
+      },
+      "plant_self_use_rate": {
+        "name": "Egenforbruksrate"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Brukbar batterikapasitet"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Gjenstående batteritid"
+      },
+      "plant_operating_mode": {
+        "name": "Driftsmodus"
+      },
+      "plant_device_online": {
+        "name": "Enhet online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV-retning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Ukjent"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Nettretning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Ukjent"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Batteriretning",
+        "state": {
+          "charging": "Lader",
+          "idle": "Inaktiv",
+          "discharging": "Utlader",
+          "unknown": "Ukjent"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Utgangsretning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Ukjent"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Trær plantet i dag"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂-reduksjon i dag"
+      },
+      "plant_inverter_status": {
+        "name": "Inverterstatus",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Ukjent"
+        }
+      }
+    }
+  }
+}

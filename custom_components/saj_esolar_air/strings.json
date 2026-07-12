@@ -74,5 +74,97 @@
       }
     },
     "reconfigure_successful": "[%key:common::config_flow::abort::reconfigure_successful%]"
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Grid power"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Grid power (absolute)"
+      },
+      "plant_battery_power": {
+        "name": "Battery power"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Battery power (absolute)"
+      },
+      "plant_pv_power": {
+        "name": "PV power"
+      },
+      "plant_load_power": {
+        "name": "Load power"
+      },
+      "plant_self_use_rate": {
+        "name": "Self-use rate"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Usable battery capacity"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Battery remaining time"
+      },
+      "plant_operating_mode": {
+        "name": "Operating mode"
+      },
+      "plant_device_online": {
+        "name": "Device online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV direction",
+        "state": {
+          "importing": "Importing",
+          "standby": "Standby",
+          "exporting": "Exporting",
+          "unknown": "Unknown"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Grid direction",
+        "state": {
+          "importing": "Importing",
+          "standby": "Standby",
+          "exporting": "Exporting",
+          "unknown": "Unknown"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Battery direction",
+        "state": {
+          "charging": "Charging",
+          "idle": "Idle",
+          "discharging": "Discharging",
+          "unknown": "Unknown"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Output direction",
+        "state": {
+          "importing": "Importing",
+          "standby": "Standby",
+          "exporting": "Exporting",
+          "unknown": "Unknown"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Trees planted today"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ reduction today"
+      },
+      "plant_inverter_status": {
+        "name": "Inverter status",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarm",
+          "offline": "Offline",
+          "unknown": "Unknown"
+        }
+      }
+    }
   }
 }

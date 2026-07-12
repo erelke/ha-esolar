@@ -8,14 +8,14 @@
           "region": "Vänligen välj den region där ditt solenergisystem är beläget"
         },
         "description": "Ange namn och lösen till ditt SAJ eSolar konto",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
-      "sites":{
-        "data":{
+      "sites": {
+        "data": {
           "monitored_sites": "Siter"
         },
         "description": "Välj siter att monitorera",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
       "reconfigure": {
         "data": {
@@ -24,14 +24,14 @@
           "region": "Vänligen välj den region där ditt solenergisystem är beläget"
         },
         "description": "Ange namn och lösen till ditt SAJ eSolar konto",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       },
-      "reconfigure_sites":{
-        "data":{
+      "reconfigure_sites": {
+        "data": {
           "monitored_sites": "Siter"
         },
         "description": "Välj siter att monitorera",
-        "title":"SAJ eSolar"
+        "title": "SAJ eSolar"
       }
     },
     "error": {
@@ -70,7 +70,99 @@
         },
         "description": "Dina val",
         "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Nät effekt"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Nät effekt (absolut)"
+      },
+      "plant_battery_power": {
+        "name": "Batterieffekt"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Batterieffekt (absolut)"
+      },
+      "plant_pv_power": {
+        "name": "PV-effekt"
+      },
+      "plant_load_power": {
+        "name": "Last effekt"
+      },
+      "plant_self_use_rate": {
+        "name": "Egenförbrukningsgrad"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Användbar batterikapacitet"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Återstående batteritid"
+      },
+      "plant_operating_mode": {
+        "name": "Driftläge"
+      },
+      "plant_device_online": {
+        "name": "Enhet online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
         }
+      },
+      "plant_pv_direction": {
+        "name": "PV-riktning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Okänd"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Nätriktning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Okänd"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Batteririktning",
+        "state": {
+          "charging": "Laddning",
+          "idle": "Vila",
+          "discharging": "Urladdning",
+          "unknown": "Okänd"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Utgångsriktning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Okänd"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Träd planterade idag"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂-reduktion idag"
+      },
+      "plant_inverter_status": {
+        "name": "Växelriktarstatus",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Larm",
+          "offline": "Offline",
+          "unknown": "Okänd"
+        }
+      }
     }
   }
 }

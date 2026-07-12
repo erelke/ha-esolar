@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Lietotājvārds",
+          "password": "Parole",
+          "region": "Atlasiet reģionu, kurā atrodas jūsu saules enerģijas sistēma."
+        },
+        "description": "Ievadiet SAJ eSolar konta lietotājvārdu un paroli",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Objekti"
+        },
+        "description": "Atlasiet uzraudzāmos objektus",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Lietotājvārds",
+          "password": "Parole",
+          "region": "Atlasiet reģionu, kurā atrodas jūsu saules enerģijas sistēma."
+        },
+        "description": "Ievadiet SAJ eSolar konta lietotājvārdu un paroli",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Objekti"
+        },
+        "description": "Atlasiet uzraudzāmos objektus",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "Nevar izveidot savienojumu",
+      "invalid_auth": "Nederīga autentifikācija",
+      "unknown": "Nezināms",
+      "no_sites": "Nav atlasītu uzraudzāmo objektu"
+    },
+    "abort": {
+      "already_configured": "Jau konfigurēts",
+      "reconfigure_successful": "Veiksmīgi pārkonfigurēts"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "SAJ objekts vairs nav pieejams",
+      "description": "Šie objekti ir konfigurēti Home Assistant, bet vairs nav pieejami jūsu SAJ kontā: {plants}. Atveriet Konfigurēt un noņemiet tos no uzraudzāmajiem objektiem."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Eiropa – Lietotājiem Eiropā",
+        "in": "Starptautisks – Lietotājiem Ziemeļamerikā, Dienvidamerikā, Āfrikā, Okeānijā un citos Āzijas reģionos",
+        "cn": "Ķīna – Lietotājiem Ķīnā"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Rādīt invertora sensorus",
+          "show_pv_grid_data": "Rādīt saules un tīkla atribūtus",
+          "plant_update_interval": "Objekta atjaunināšanas intervāls (minūtes)"
+        },
+        "description": "Atlasiet opcijas",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Tīkla jauda"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Tīkla jauda (absolūta)"
+      },
+      "plant_battery_power": {
+        "name": "Akumulatora jauda"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Akumulatora jauda (absolūta)"
+      },
+      "plant_pv_power": {
+        "name": "PV jauda"
+      },
+      "plant_load_power": {
+        "name": "Patēriņa jauda"
+      },
+      "plant_self_use_rate": {
+        "name": "Pašpatēriņa rādītājs"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Izmantojamā akumulatora ietilpība"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Atlikušais akumulatora laiks"
+      },
+      "plant_operating_mode": {
+        "name": "Darbības režīms"
+      },
+      "plant_device_online": {
+        "name": "Ierīce online",
+        "state": {
+          "online": "Online",
+          "offline": "Offline"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "PV virziens",
+        "state": {
+          "importing": "Imports",
+          "standby": "Gaidīšana",
+          "exporting": "Eksports",
+          "unknown": "Nezināms"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Tīkla virziens",
+        "state": {
+          "importing": "Imports",
+          "standby": "Gaidīšana",
+          "exporting": "Eksports",
+          "unknown": "Nezināms"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Akumulatora virziens",
+        "state": {
+          "charging": "Uzlāde",
+          "idle": "Dīkstāvē",
+          "discharging": "Izlāde",
+          "unknown": "Nezināms"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Izejas virziens",
+        "state": {
+          "importing": "Imports",
+          "standby": "Gaidīšana",
+          "exporting": "Eksports",
+          "unknown": "Nezināms"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Šodien iestādīti koki"
+      },
+      "plant_daily_co2": {
+        "name": "CO₂ samazinājums šodien"
+      },
+      "plant_inverter_status": {
+        "name": "Invertora statuss",
+        "state": {
+          "normal": "Normāls",
+          "alarm": "Trauksme",
+          "offline": "Offline",
+          "unknown": "Nezināms"
+        }
+      }
+    }
+  }
+}

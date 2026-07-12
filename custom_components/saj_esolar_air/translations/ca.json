@@ -1,0 +1,168 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "data": {
+          "username": "Nom d'usuari",
+          "password": "Contrasenya",
+          "region": "Seleccioneu la regió on es troba el vostre sistema solar."
+        },
+        "description": "Introduïu el nom d'usuari i la contrasenya del vostre compte SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "sites": {
+        "data": {
+          "monitored_sites": "Instal·lacions"
+        },
+        "description": "Seleccioneu les instal·lacions a monitoritzar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure": {
+        "data": {
+          "username": "Nom d'usuari",
+          "password": "Contrasenya",
+          "region": "Seleccioneu la regió on es troba el vostre sistema solar."
+        },
+        "description": "Introduïu el nom d'usuari i la contrasenya del vostre compte SAJ eSolar",
+        "title": "SAJ eSolar"
+      },
+      "reconfigure_sites": {
+        "data": {
+          "monitored_sites": "Instal·lacions"
+        },
+        "description": "Seleccioneu les instal·lacions a monitoritzar",
+        "title": "SAJ eSolar"
+      }
+    },
+    "error": {
+      "cannot_connect": "No es pot connectar",
+      "invalid_auth": "Autenticació no vàlida",
+      "unknown": "Desconegut",
+      "no_sites": "No s'ha seleccionat cap instal·lació monitoritzada"
+    },
+    "abort": {
+      "already_configured": "Ja configurat",
+      "reconfigure_successful": "Reconfiguració correcta"
+    }
+  },
+  "issues": {
+    "unavailable_plant": {
+      "title": "La planta SAJ ja no és accessible",
+      "description": "Les plantes següents estan configurades a Home Assistant però ja no estan disponibles al vostre compte SAJ: {plants}. Obriu Configura i elimineu-les de les instal·lacions monitoritzades."
+    }
+  },
+  "selector": {
+    "region": {
+      "options": {
+        "eu": "Europa – Per a usuaris a Europa",
+        "in": "Internacional – Per a usuaris a Amèrica del Nord, Amèrica del Sud, Àfrica, Oceania i altres regions d'Àsia",
+        "cn": "Xina – Per a usuaris a la Xina"
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "data": {
+          "show_inverter_sensors": "Mostrar sensors de l'inversor",
+          "show_pv_grid_data": "Mostrar atributs fotovoltaics i de xarxa",
+          "plant_update_interval": "Interval d'actualització de la planta (minuts)"
+        },
+        "description": "Seleccionar opcions",
+        "title": "SAJ eSolar"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "plant_grid_power": {
+        "name": "Potència de xarxa"
+      },
+      "plant_grid_power_absolute": {
+        "name": "Potència de xarxa (absoluta)"
+      },
+      "plant_battery_power": {
+        "name": "Potència de la bateria"
+      },
+      "plant_battery_power_absolute": {
+        "name": "Potència de la bateria (absoluta)"
+      },
+      "plant_pv_power": {
+        "name": "Potència PV"
+      },
+      "plant_load_power": {
+        "name": "Potència de consum"
+      },
+      "plant_self_use_rate": {
+        "name": "Taxa d'autoconsum"
+      },
+      "plant_usable_battery_capacity": {
+        "name": "Capacitat útil de la bateria"
+      },
+      "plant_battery_remaining_time": {
+        "name": "Temps restant de la bateria"
+      },
+      "plant_operating_mode": {
+        "name": "Mode de funcionament"
+      },
+      "plant_device_online": {
+        "name": "Dispositiu en línia",
+        "state": {
+          "online": "Online",
+          "offline": "Fora de línia"
+        }
+      },
+      "plant_pv_direction": {
+        "name": "Direcció PV",
+        "state": {
+          "importing": "Importació",
+          "standby": "En espera",
+          "exporting": "Exportació",
+          "unknown": "Desconegut"
+        }
+      },
+      "plant_grid_direction": {
+        "name": "Direcció de xarxa",
+        "state": {
+          "importing": "Importació",
+          "standby": "En espera",
+          "exporting": "Exportació",
+          "unknown": "Desconegut"
+        }
+      },
+      "plant_battery_direction": {
+        "name": "Direcció de la bateria",
+        "state": {
+          "charging": "Carregant",
+          "idle": "Inactiu",
+          "discharging": "Descarregant",
+          "unknown": "Desconegut"
+        }
+      },
+      "plant_output_direction": {
+        "name": "Direcció de sortida",
+        "state": {
+          "importing": "Importació",
+          "standby": "En espera",
+          "exporting": "Exportació",
+          "unknown": "Desconegut"
+        }
+      },
+      "plant_daily_trees": {
+        "name": "Arbres plantats avui"
+      },
+      "plant_daily_co2": {
+        "name": "Reducció de CO₂ avui"
+      },
+      "plant_inverter_status": {
+        "name": "Estat de l'inversor",
+        "state": {
+          "normal": "Normal",
+          "alarm": "Alarma",
+          "offline": "Fora de línia",
+          "unknown": "Desconegut"
+        }
+      }
+    }
+  }
+}
