@@ -5,6 +5,7 @@ import logging
 import json
 import hashlib
 import os
+import uuid
 import requests
 from dateutil.relativedelta import relativedelta
 from .elekeeper import calc_signature, encrypt, generatkey, is_today, prepare_data_for_query
@@ -18,6 +19,11 @@ WEB_PLANT_DATA: dict = {}
 CAPTCHA_REQUIRED_MSG = (
     "SAJ login requires captcha verification. "
     "Log in at https://eop.saj-electric.com/ in a browser, then reload the integration."
+)
+BROWSER_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/131.0.0.0 Safari/537.36"
 )
 
 SESSION_AUTH_ERROR_CODES = {401, 403}
@@ -48,16 +54,26 @@ if BASIC_TEST:
     )
 
 
-def base_url(region):
-    """SAJ eSolar Helper Function - Returns the base URL for the region."""
+def portal_origin(region):
+    """Return the Elekeeper portal origin for the region."""
     if region == "eu":
-        return "https://eop.saj-electric.com/dev-api/api/v1"
+        return "https://eop.saj-electric.com"
     elif region == "in":
-        return "https://iop.saj-electric.com/dev-api/api/v1"
+        return "https://iop.saj-electric.com"
     elif region == "cn":
-        return "https://op.saj-electric.cn/dev-api/api/v1"
+        return "https://op.saj-electric.cn"
     else:
         raise ValueError("Region not set. Please run Configure again")
+
+
+def base_url(region):
+    """SAJ eSolar Helper Function - Returns the v1 API base URL for the region."""
+    return portal_origin(region) + "/dev-api/api/v1"
+
+
+def base_url_v2(region):
+    """Return the SAJ Elekeeper v2 API base URL for the region."""
+    return portal_origin(region) + "/dev-api/api/v2"
 
 def dump(region, username, password):
     """ dumps the data for the region, username and password. Called from the CLI. """
@@ -215,16 +231,68 @@ def _fetch_esolar_data(
     return plant_info
 
 
-def _login_sign_data():
-    """Common signed fields used for SAJ v1 login requests."""
+def _v2_common_fields():
+    """Common JSON fields used for SAJ v2 login and token requests."""
     return {
         "appProjectName": "elekeeper",
         "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
         "lang": "en",
         "timeStamp": int(time.time() * 1000),
-        "random": generatkey(32),
         "clientId": "esolar-monitor-admin",
+        "clientCode": "organization",
+        "themeColor": "light",
     }
+
+
+def _prepare_web_session(region):
+    """Create a requests session with Elekeeper frontend-like headers."""
+    session = requests.Session()
+    origin = portal_origin(region)
+    common = _v2_common_fields()
+    session.headers.update(
+        {
+            "User-Agent": BROWSER_USER_AGENT,
+            "Accept": "application/json, text/plain, */*",
+            "Accept-Language": "en",
+            "Origin": origin,
+            "Referer": origin + "/",
+            "Content-Language": "zh_CN",
+            "lang": "en",
+            "X-App-Project-Name": common["appProjectName"],
+            "X-Client-Code": common["clientCode"],
+            "X-Client-Date": common["clientDate"],
+            "X-Lang": common["lang"],
+            "X-Timestamp": str(common["timeStamp"]),
+            "X-Theme-Color": common["themeColor"],
+            "X-Trace-Id": uuid.uuid4().hex[:16],
+        }
+    )
+    return session
+
+
+def _v2_request_headers(common):
+    """Per-request v2 headers that must stay in sync with the JSON body."""
+    return {
+        "Content-Type": "application/json;charset=utf-8",
+        "X-App-Project-Name": common["appProjectName"],
+        "X-Client-Code": common["clientCode"],
+        "X-Client-Date": common["clientDate"],
+        "X-Lang": common["lang"],
+        "X-Timestamp": str(common["timeStamp"]),
+        "X-Theme-Color": common["themeColor"],
+        "X-Trace-Id": uuid.uuid4().hex[:16],
+    }
+
+
+def _post_v2(session, region, path, payload):
+    """POST JSON to a SAJ v2 endpoint using Elekeeper frontend headers."""
+    common = _v2_common_fields()
+    return session.post(
+        base_url_v2(region) + path,
+        json=payload | common,
+        headers=_v2_request_headers(common),
+        timeout=WEB_TIMEOUT,
+    )
 
 
 def _is_session_auth_error(answer: dict) -> bool:
@@ -342,16 +410,15 @@ def _raise_login_error(answer):
 def _captcha_required(region, session, username):
     """Return True when SAJ requires captcha before password login."""
     try:
-        signed = calc_signature(_login_sign_data())
-        post_data = signed | {
-            "type": "pwdLogin",
-            "roleType": 1,
-            "loginName": username,
-        }
-        response = session.post(
-            base_url(region) + "/sys/common/ali/getCaptchaInfo",
-            data=post_data,
-            timeout=WEB_TIMEOUT,
+        response = _post_v2(
+            session,
+            region,
+            "/sys/common/ali/getCaptchaInfo",
+            {
+                "type": "pwdLogin",
+                "roleType": 1,
+                "loginName": username,
+            },
         )
         if response.status_code != 200:
             _LOGGER.debug("Captcha check unavailable, status %s", response.status_code)
@@ -371,19 +438,14 @@ def _captcha_required(region, session, username):
 
 def _refresh_access_token(region, session, username, password, refresh_token):
     """Refresh the bearer token using a stored refresh token."""
-    data = {
-        "refreshToken": refresh_token,
-        "appProjectName": "elekeeper",
-        "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
-        "lang": "en",
-        "timeStamp": int(time.time() * 1000),
-        "random": generatkey(32),
-    }
-    signed = calc_signature(data)
-    response = session.post(
-        base_url(region) + "/sys/refreshToken",
-        data=signed,
-        timeout=WEB_TIMEOUT,
+    response = _post_v2(
+        session,
+        region,
+        "/sys/user/refreshToken",
+        {
+            "refreshToken": refresh_token,
+            "loginType": 1,
+        },
     )
     response.raise_for_status()
     answer = response.json()
@@ -396,21 +458,20 @@ def _refresh_access_token(region, session, username, password, refresh_token):
 
 
 def _perform_login(region, session, username, password):
-    """Perform a full SAJ v1 password login."""
+    """Perform a full SAJ v2 password login."""
     if _captcha_required(region, session, username):
         raise ValueError(CAPTCHA_REQUIRED_MSG)
 
-    signed = calc_signature(_login_sign_data())
-    login_data = {
-        "username": username,
-        "password": encrypt(password),
-        "rememberMe": "false",
-        "loginType": 1,
-    }
-    response = session.post(
-        base_url(region) + "/sys/login",
-        data=signed | login_data,
-        timeout=WEB_TIMEOUT,
+    response = _post_v2(
+        session,
+        region,
+        "/sys/user/login",
+        {
+            "username": username,
+            "password": encrypt(password),
+            "rememberMe": False,
+            "loginType": 1,
+        },
     )
     response.raise_for_status()
     answer = response.json()
@@ -430,7 +491,7 @@ def esolar_web_autenticate(region, username, password, force_login=False):
         return True
 
     try:
-        session = requests.Session()
+        session = _prepare_web_session(region)
         stored_data = read_user_data(username, password)
 
         if (
@@ -1034,6 +1095,72 @@ def web_get_plant_flow_data(region, session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
+def _normalize_module_energy(energy_data, module_sn):
+    """Map v2 meter/flow fields onto the module shape used by sensors."""
+    if not isinstance(energy_data, dict):
+        return None
+    if energy_data.get("gridPower") is None:
+        grid = energy_data.get("sysGridPowerwatt")
+        if grid is None:
+            grid = energy_data.get("gridPowerwatt")
+        if grid is not None:
+            energy_data["gridPower"] = grid
+    energy_data.setdefault("moduleSn", module_sn)
+    return energy_data
+
+
+def _merge_plant_module(plant, module_sn, payload):
+    """Insert or update a SEC/meter module on the plant."""
+    if not payload:
+        return
+    if "modules" not in plant or plant["modules"] is None:
+        plant["modules"] = []
+    for plant_module in plant["modules"]:
+        if plant_module.get("moduleSn") == module_sn:
+            plant_module.update(payload)
+            return
+    plant["modules"].append(payload)
+
+
+def _fetch_module_energy(region, session, plant, module_sn):
+    """Fetch live meter power using current Elekeeper v2 APIs."""
+    is_ems_plant = plant.get("type") == 0 and plant.get("isInstallEms") == 1
+    is_meter_plant = plant.get("type") == 1 or (
+        plant.get("type") == 0 and plant.get("isInstallMeter") != 0
+    )
+
+    if is_meter_plant and not is_ems_plant:
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plantHome/getDeviceEnergyFlowDiagram",
+            {
+                "plantUid": plant["plantUid"],
+                "sn": module_sn,
+                "snType": 2,
+            },
+        )
+        context = f"getDeviceEnergyFlowDiagram for {plant.get('plantName')}"
+    else:
+        payload = {
+            "plantUid": plant["plantUid"],
+            "chartDateType": 1,
+            "chartDay": datetime.date.today().strftime("%Y-%m-%d"),
+        }
+        prepare_data_for_query(plant, payload)
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plant/chart/getSelfUseEnergyData",
+            payload,
+        )
+        context = f"getSelfUseEnergyData for {plant.get('plantName')}"
+
+    response.raise_for_status()
+    energy_data = _parse_api_data(response.json(), context, required=False)
+    return _normalize_module_energy(energy_data, module_sn)
+
+
 def web_get_sec_statistics(region, session, plant_info):
     """Retrieve SEC/EMS devices from the WEB Portal."""
     if session is None:
@@ -1075,76 +1202,20 @@ def web_get_sec_statistics(region, session, plant_info):
                     for module in module_data:
                         if "moduleSn" in module and module["moduleSn"] is not None:
                             module_sn = module["moduleSn"]
-                            if "modules" not in plant:
-                                plant["modules"] = []
-                            found = False
-                            for plant_module in plant["modules"]:
-                                if "moduleSn" in plant_module and plant_module["moduleSn"] is not None and \
-                                        plant_module["moduleSn"] == module_sn:
-                                    plant_module.update(module)
-                                    found = True
-                            if not found:
-                                plant["modules"].append(module)
+                            _merge_plant_module(plant, module_sn, module)
 
-                            if "moduleSnList" not in plant:
-                                plant["moduleSnList"] = {}
+                            if "moduleSnList" not in plant or plant["moduleSnList"] is None:
+                                plant["moduleSnList"] = []
                             if module_sn not in plant["moduleSnList"]:
                                 plant["moduleSnList"].append(module_sn)
 
                 if "moduleSnList" in plant and plant["moduleSnList"] is not None and len(plant["moduleSnList"]) > 0:
                     for moduleSn in plant["moduleSnList"]:
-                        data = {
-                            "plantUid": plant["plantUid"],
-                            "chartDateType": 5,
-                            "chartDay": datetime.date.today().strftime("%Y-%m-%d"),
-                            'appProjectName': 'elekeeper',
-                            'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                            'lang': 'en',
-                            'timeStamp': int(time.time() * 1000),
-                            'random': generatkey(32),
-                            'clientId': 'esolar-monitor-admin',
-                        }
-
-                        if plant.get("type") == 0 and plant.get("isInstallEms") == 1:
-                            url = "/monitor/plant/chart/getSecSelfUseEnergyData"
-                            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
-                        elif plant.get("type") == 1 or (plant.get("type") == 0 and plant.get("isInstallMeter") != 0):
-                            url = "/monitor/home/getSecSelfUseEnergyData"
-                            data["moduleSn"] = moduleSn
-                        else:
-                            url = "/monitor/plant/chart/getSelfUseEnergyData"
-                            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
-
-                        signed = calc_signature(data)
-
-                        response = session.get(
-                            base_url(region) + url,
-                            params = signed,
-                            timeout=WEB_TIMEOUT
-                        )
-
-                        response.raise_for_status()
-
-                        if response.status_code != 200:
-                            raise ValueError(f"Get plant getSecSelfUseEnergyData error: {response.status_code}")
-
-                        answer = response.json()
-                        energy_data = _parse_api_data(
-                            answer,
-                            f"getSecSelfUseEnergyData for {plant.get('plantName')}",
-                            required=False,
+                        energy_data = _fetch_module_energy(
+                            region, session, plant, moduleSn
                         )
                         if energy_data is not None:
-                            if "modules" not in plant:
-                                plant["modules"] = []
-                            found = False
-                            for plant_module in plant["modules"]:
-                                if "moduleSn" in plant_module and plant_module["moduleSn"] is not None and \
-                                        plant_module["moduleSn"] == moduleSn:
-                                    plant_module.update(energy_data)
-                                    found = True
-                            if not found:
-                                plant["modules"].append(energy_data)
+                            _merge_plant_module(plant, moduleSn, energy_data)
 
 
     except requests.exceptions.HTTPError as errh:
