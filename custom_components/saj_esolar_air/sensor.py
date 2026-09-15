@@ -183,17 +183,22 @@ async def async_setup_entry(
                 )
             )
 
-            if plant["type"] in [1,3] and (("hasBattery" in plant and plant["hasBattery"] == 1) or "hasBattery" not in plant):
+            has_battery = (
+                plant.get("hasBattery") == 1
+                or bool(plant.get("batteries"))
+                or any(
+                    (device.get("deviceStatisticsData") or {}).get("batEnergyPercent") is not None
+                    for device in plant.get("devices", [])
+                )
+            )
+
+            if has_battery:
                 sources = ["todayBuyEnergy", "todayChargeEnergy", "todayDisChargeEnergy", "todayLoadEnergy", "todaySellEnergy",
                            "totalBuyEnergy", "totalChargeEnergy", "totalDisChargeEnergy", "totalLoadEnergy", "totalSellEnergy",
                            "yearBuyEnergy", "yearBatChgEnergy", "yearBatDischgEnergy", "yearLoadEnergy", "yearSellEnergy",
                            "monthBuyEnergy", "monthBatChgEnergy", "monthBatDischgEnergy", "monthLoadEnergy", "monthSellEnergy",
                            ]
 
-                _LOGGER.debug(
-                    "Setting up ESolarSensorPlantBatterySoC sensor for %s",
-                    plant["plantName"],
-                )
                 plant_entities.append(
                     ESolarSensorPlantBatterySoC(
                         coordinator, plant["plantName"], plant["plantUid"]
@@ -281,11 +286,17 @@ async def async_setup_entry(
                         ESolarSensorInverterPeakPower( coordinator, plant["plantName"], plant["plantUid"], device)
                     )
 
-            if use_inverter_sensors and plant["type"] in [1,3] :
+            if use_inverter_sensors and has_battery:
                 for device_sn in plant["deviceSnList"]:
                     for device in plant["devices"]:
                         if device["deviceSn"] == device_sn:
-                            if ("hasBattery" in device and device["hasBattery"] == 1) or "hasBattery" not in device:
+                            device_stats = device.get("deviceStatisticsData") or {}
+                            device_has_battery = (
+                                device.get("hasBattery") == 1
+                                or device_stats.get("batEnergyPercent") is not None
+                                or device.get("batEnergyPercent") is not None
+                            )
+                            if device_has_battery:
                                 _LOGGER.debug(
                                     "Setting up ESolarInverterBatterySoC sensor for %s and device %s.",
                                     plant["plantName"],
@@ -436,10 +447,10 @@ class ESolarPlant(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
-                plant_no = plant["plantNo"]
-                plant_id = plant["plantId"]
-                plant_owner = plant["ownerName"]
-                plant_owner_email = plant["ownerEmail"]
+                plant_no = plant.get("plantNo")
+                plant_id = plant.get("plantId") or plant.get("plantUid")
+                plant_owner = plant.get("ownerName")
+                plant_owner_email = plant.get("ownerEmail")
 
         device_info = DeviceInfo(
             manufacturer=MANUFACTURER,
@@ -799,29 +810,29 @@ class ESolarSensorPlant(ESolarPlant):
                 #     self._attr_extra_state_attributes['Original data'] = plant
 
                 self._attr_extra_state_attributes[P_UID] = plant["plantUid"]
-                self._attr_extra_state_attributes[P_CO2] = plant["totalReduceCo2"]
-                self._attr_extra_state_attributes[P_COAL] = plant["totalCoal"]
-                self._attr_extra_state_attributes[P_TREES] = plant["totalPlantTreeNum"]
-                self._attr_extra_state_attributes[P_YCO2] = plant["yearReduceCo2"]
-                self._attr_extra_state_attributes[P_YCOAL] = plant["yearCoal"]
-                self._attr_extra_state_attributes[P_YTREES] = plant["yearPlantTreeNum"]
-                self._attr_extra_state_attributes[P_LATITUDE] = plant["latitude"]
-                self._attr_extra_state_attributes[P_LONGITUDE] = plant["longitude"]
-                self._attr_extra_state_attributes[P_PIC] = plant["plantLogo"]
-                self._attr_extra_state_attributes[P_ADR] = plant["fullAddress"]
-                self._attr_extra_state_attributes[P_FIRST_ONLINE] = plant["createDate"]
-                self._attr_extra_state_attributes[P_NO] = plant["plantNo"]
-                self._attr_extra_state_attributes[P_ID] = plant["plantId"]
-                self._attr_extra_state_attributes[P_OWNER_NAME] = plant['ownerName']
-                self._attr_extra_state_attributes[P_OWNER_EMAIL] = plant['ownerEmail']
-                self._attr_extra_state_attributes[S_POWER] = plant['systemPower']
+                self._attr_extra_state_attributes[P_CO2] = plant.get("totalReduceCo2")
+                self._attr_extra_state_attributes[P_COAL] = plant.get("totalCoal")
+                self._attr_extra_state_attributes[P_TREES] = plant.get("totalPlantTreeNum")
+                self._attr_extra_state_attributes[P_YCO2] = plant.get("yearReduceCo2")
+                self._attr_extra_state_attributes[P_YCOAL] = plant.get("yearCoal")
+                self._attr_extra_state_attributes[P_YTREES] = plant.get("yearPlantTreeNum")
+                self._attr_extra_state_attributes[P_LATITUDE] = plant.get("latitude")
+                self._attr_extra_state_attributes[P_LONGITUDE] = plant.get("longitude")
+                self._attr_extra_state_attributes[P_PIC] = plant.get("plantLogo")
+                self._attr_extra_state_attributes[P_ADR] = plant.get("fullAddress")
+                self._attr_extra_state_attributes[P_FIRST_ONLINE] = plant.get("createDate")
+                self._attr_extra_state_attributes[P_NO] = plant.get("plantNo")
+                self._attr_extra_state_attributes[P_ID] = plant.get("plantId") or plant.get("plantUid")
+                self._attr_extra_state_attributes[P_OWNER_NAME] = plant.get("ownerName")
+                self._attr_extra_state_attributes[P_OWNER_EMAIL] = plant.get("ownerEmail")
+                self._attr_extra_state_attributes[S_POWER] = plant.get("systemPower")
 
                 # Setup state
-                if plant["runningState"] == 1:
+                if plant.get("runningState") == 1:
                     self._attr_native_value = "Normal"
-                elif plant["runningState"] == 2:
+                elif plant.get("runningState") == 2:
                     self._attr_native_value = "Alarm"
-                elif plant["runningState"] == 3:
+                elif plant.get("runningState") == 3:
                     self._attr_native_value = "Offline"
                 else:
                     self._attr_native_value = None
@@ -854,16 +865,23 @@ class ESolarSensorPlantTotalEnergy(ESolarPlant):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
                 # Setup static attributes
-                self._attr_available = True
-                self._attr_extra_state_attributes[I_TOTAL] = plant["totalIncome"] if ("totalIncome" in plant and plant["totalIncome"] is not None and plant["totalIncome"] != '--' and float(plant["totalIncome"]) > 0.0 ) else plant["incomeTotal"]
+                total_income = plant.get("totalIncome")
+                if total_income in (None, "--", ""):
+                    total_income = plant.get("incomeTotal")
+                self._attr_extra_state_attributes[I_TOTAL] = total_income
 
-                # Setup state
-                if float(plant["totalPvEnergy"]) > 0.0:
-                    self._attr_native_value = float(plant["totalPvEnergy"])
-                elif  float(plant["totalEnergy"]) > 0.0:
-                    self._attr_native_value = float(plant["totalEnergy"])
+                total_pv = plant.get("totalPvEnergy")
+                total_energy = plant.get("totalEnergy")
+
+                if total_pv not in (None, "--", ""):
+                    self._attr_available = True
+                    self._attr_native_value = float(total_pv)
+                elif total_energy not in (None, "--", ""):
+                    self._attr_available = True
+                    self._attr_native_value = float(total_energy)
                 else:
                     self._attr_available = False
+                    self._attr_native_value = None
 
 
 class ESolarSensorPlantTodayEnergy(ESolarPlant):
@@ -896,11 +914,21 @@ class ESolarSensorPlantTodayEnergy(ESolarPlant):
             if plant["plantName"] == self._plant_name:
 
                 # Setup static attributes
-                self._attr_available = True
-                self._attr_extra_state_attributes[I_TODAY] = plant["todayIncome"] if ("todayIcome" in plant and plant["todayIncome"] is not None and float(plant["todayIncome"]) > 0) else plant["incomeToday"]
-                self._attr_extra_state_attributes[I_YESTERDAY] = plant["yesterdayIncome"]
+                today_income = plant.get("todayIncome")
+                if today_income in (None, "--", ""):
+                    today_income = plant.get("incomeToday")
+
+                self._attr_extra_state_attributes[I_TODAY] = today_income
+                self._attr_extra_state_attributes[I_YESTERDAY] = plant.get("yesterdayIncome")
+
                 # Setup state
-                self._attr_native_value = float(plant["todayPvEnergy"])
+                today_pv = plant.get("todayPvEnergy")
+                if today_pv not in (None, "--", ""):
+                    self._attr_available = True
+                    self._attr_native_value = float(today_pv)
+                else:
+                    self._attr_available = False
+                    self._attr_native_value = None
 
 
 class ESolarSensorPlantMonthEnergy(ESolarPlant):
@@ -931,12 +959,24 @@ class ESolarSensorPlantMonthEnergy(ESolarPlant):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
-                # Setup static attributes
+                month_pv = plant.get("monthPvEnergy")
+
+                if month_pv in (None, "--", ""):
+                    self._attr_available = False
+                    self._attr_native_value = None
+                    return
+
                 self._attr_available = True
-                self._attr_extra_state_attributes[I_MONTH] = plant["incomeMonth"] if ("incomeMonth" in plant and plant["incomeMonth"] is not None and float(plant["incomeMonth"]) > 0) else plant["monthIncome"]
-                self._attr_extra_state_attributes[I_LAST_MONTH] = plant["incomeLastMonth"]
-                # Setup state
-                self._attr_native_value = float(plant["monthPvEnergy"])
+                self._attr_native_value = float(month_pv)
+
+                month_income = plant.get("incomeMonth")
+                if month_income is None:
+                    month_income = plant.get("monthIncome")
+
+                self._attr_extra_state_attributes[I_MONTH] = month_income
+                self._attr_extra_state_attributes[I_LAST_MONTH] = plant.get(
+                    "incomeLastMonth"
+                )
 
 
 class ESolarSensorPlantYearEnergy(ESolarPlant):
@@ -962,10 +1002,15 @@ class ESolarSensorPlantYearEnergy(ESolarPlant):
     def process_data(self):
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
-                # Setup static attributes
+                year_pv = plant.get("yearPvEnergy")
+
+                if year_pv in (None, "--", ""):
+                    self._attr_available = False
+                    self._attr_native_value = None
+                    return
+
                 self._attr_available = True
-                # Setup state
-                self._attr_native_value = float(plant["yearPvEnergy"])
+                self._attr_native_value = float(year_pv)
 
 
 class ESolarSensorPlantPeakPower(ESolarPlant):
@@ -994,9 +1039,13 @@ class ESolarSensorPlantPeakPower(ESolarPlant):
                 if self._offline_blocks_live_sensor(plant):
                     return
                 # Setup static attributes
-                self._attr_available = True
-                # Setup state
-                self._attr_native_value = float(plant.get("peakPower",0))
+                peak_power = plant.get("peakPower")
+                if peak_power is None:
+                    self._attr_available = False
+                    self._attr_native_value = None
+                else:
+                    self._attr_available = True
+                    self._attr_native_value = float(peak_power)
 
 
 class ESolarSensorPlantLastUploadTime(ESolarPlant):
