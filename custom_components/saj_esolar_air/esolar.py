@@ -617,292 +617,389 @@ def read_user_data(username: str, password: str, filename="user_data.json"):
 
     return {"error": "A token lejárt."}
 
+
 def web_get_plant(region, session, requested_plant_list=None):
-    """Retrieve the plantUid from WEB Portal using web_authenticate."""
+    """Retrieve plants from the SAJ Elekeeper v2 API."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain plants")
 
     if BASIC_TEST:
         return web_get_plant_static_h1_r5()
 
-    try:
-        output_plant_list = []
-        data = {
+    response = _post_v2(
+        session,
+        region,
+        "/monitor/plant/getEndUserPlantList",
+        {
             "pageNo": 1,
             "pageSize": 500,
-            'appProjectName': 'elekeeper',
-            'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-            'lang': 'en',
-            'timeStamp': int(time.time() * 1000),
-            'random': generatkey(32),
-            'clientId': 'esolar-monitor-admin',
-        }
+        },
+    )
+    response.raise_for_status()
 
-        signed = calc_signature(data)
+    list_data = _parse_api_data(
+        response.json(),
+        "getEndUserPlantList",
+        auth_critical=True,
+    )
 
-        response = session.get(
-            base_url(region) + "/monitor/plant/getEndUserPlantList",
-            params=signed,
-            timeout=WEB_TIMEOUT,
+    if not isinstance(list_data, dict) or "list" not in list_data:
+        raise ValueError(
+            "Unexpected plant list response from SAJ API: missing list data"
         )
 
-        response.raise_for_status()
+    plants = list_data["list"]
 
-        if response.status_code != 200:
-            raise ValueError(f"Get plant error: {response.status_code}")
+    if requested_plant_list is not None:
+        output_plant_list = []
+        found_names = []
 
-        plant_list = response.json()
-        list_data = _parse_api_data(
-            plant_list,
-            "getEndUserPlantList",
-            auth_critical=True,
-        )
-        if not isinstance(list_data, dict) or "list" not in list_data:
-            raise ValueError(
-                "Unexpected plant list response from SAJ API: missing list data"
-            )
+        for plant in plants:
+            if plant.get("plantName") in requested_plant_list:
+                output_plant_list.append(plant)
+                found_names.append(plant.get("plantName"))
 
-        if requested_plant_list is not None:
-            found_names: list[str] = []
-            for plant in list_data["list"]:
-                if plant["plantName"] in requested_plant_list:
-                    output_plant_list.append(plant)
-                    found_names.append(plant["plantName"])
-            missing = [name for name in requested_plant_list if name not in found_names]
-            result = {"plantList": output_plant_list}
-            if missing:
-                result[UNAVAILABLE_PLANTS] = missing
-            return result
+        missing = [
+            name for name in requested_plant_list
+            if name not in found_names
+        ]
 
-        return {"plantList": list_data["list"]}
+        result = {"plantList": output_plant_list}
+        if missing:
+            result[UNAVAILABLE_PLANTS] = missing
+        return result
 
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
+    return {"plantList": plants}
+
 
 def web_get_plant_details(region, session, plant_info):
-    """Retrieve plantUid from the WEB Portal using web_authenticate."""
-    if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
-
-    try:
-        for plant in plant_info["plantList"]:
-            data = {
-                "plantUid": plant["plantUid"],
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
-
-            signed = calc_signature(data)
-
-            response = session.get(
-                base_url(region) + "/monitor/plant/getOnePlantInfo", #/monitor/site/getPlantDetailInfo
-                params = signed,
-                timeout=WEB_TIMEOUT
-            )
-
-            response.raise_for_status()
-
-            if response.status_code != 200:
-                raise ValueError(f"Get plant detail error: {response.status_code}")
-
-            plant_detail = response.json()
-            detail_data = _parse_api_data(
-                plant_detail,
-                f"getOnePlantInfo for {plant.get('plantName')}",
-                required=False,
-            )
-            if detail_data is None:
-                continue
-            plant.update(detail_data)
-
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
-
-def web_get_plant_statistics(region, session, plant_info):
-    """Retrieve platUid from the WEB Portal using web_authenticate."""
+    """Retrieve plant details from the SAJ Elekeeper v2 API."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain plants")
 
-    try:
-         for plant in plant_info["plantList"]:
-            if plant.get("type") == 2:
-                 continue
-
-            data = {
+    for plant in plant_info["plantList"]:
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plant/getOnePlantInfoV2",
+            {
                 "plantUid": plant["plantUid"],
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
+            },
+        )
+        response.raise_for_status()
 
-            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
+        detail_data = _parse_api_data(
+            response.json(),
+            f"getOnePlantInfoV2 for {plant.get('plantName')}",
+            required=False,
+        )
 
-            signed = calc_signature(data)
+        if isinstance(detail_data, dict):
+            plant.update(detail_data)
 
-            response = session.get(
-                base_url(region) + "/monitor/home/getPlantStatisticsData",
-                params = signed,
-                timeout=WEB_TIMEOUT
+
+def web_get_plant_statistics(region, session, plant_info):
+    """Retrieve plant energy statistics from the SAJ Elekeeper v2 API."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain plant statistics")
+
+    for plant in plant_info["plantList"]:
+        if plant.get("type") == 2:
+            continue
+
+        device_sn = None
+
+        if plant.get("deviceSn"):
+            device_sn = plant.get("deviceSn")
+        elif plant.get("deviceSnList"):
+            device_sn = plant["deviceSnList"][0]
+
+        if not device_sn:
+            _LOGGER.debug(
+                "Skipping plant statistics for %s: no device serial",
+                plant.get("plantName"),
             )
+            continue
 
-            response.raise_for_status()
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plantHome/getPlantEnergyStatistics",
+            {
+                "plantUid": plant["plantUid"],
+                "sn": device_sn,
+                "snType": 1,
+            },
+        )
+        response.raise_for_status()
 
-            if response.status_code != 200:
-                raise ValueError(f"Get plant statistics data error: {response.status_code}")
+        stats_data = _parse_api_data(
+            response.json(),
+            f"getPlantEnergyStatistics for {plant.get('plantName')}",
+            required=False,
+        )
 
-            plant_statistics = response.json()
-            stats_data = _parse_api_data(
-                plant_statistics,
-                f"getPlantStatisticsData for {plant.get('plantName')}",
+        if not isinstance(stats_data, dict):
+            continue
+
+        stats_data.pop("deviceSnList", None)
+        stats_data.pop("moduleSnList", None)
+        plant.update(stats_data)
+
+        # Environmental totals returned by Elekeeper v2.
+        for item in stats_data.get("environmentalInformation", []) or []:
+            description = item.get("describe", "")
+            value = item.get("value")
+
+            if value is None:
+                continue
+
+            if "CO₂ emissions reduced" in description:
+                plant["totalReduceCo2"] = value
+            elif "Equivalent tree planting" in description:
+                plant["totalPlantTreeNum"] = value
+            elif "Standard coal saved" in description:
+                plant["totalCoal"] = value
+
+        # Income compatibility.
+        for item in stats_data.get("webIncomeDataList", []) or []:
+            if item.get("incomeKey") != "PV_INCOME":
+                continue
+
+            if item.get("incomeToday") is not None:
+                plant["incomeToday"] = item["incomeToday"]
+                plant["todayIncome"] = item["incomeToday"]
+
+            if item.get("incomeTotal") is not None:
+                plant["incomeTotal"] = item["incomeTotal"]
+                plant["totalIncome"] = item["incomeTotal"]
+
+        # Energy compatibility.
+        for item in stats_data.get("energyDataList", []) or []:
+            data_type = item.get("dataType")
+
+            if data_type == "PV_ENERGY":
+                if item.get("energy1Today") is not None:
+                    plant["todayPvEnergy"] = item["energy1Today"]
+
+                if item.get("energy1Total") is not None:
+                    plant["totalPvEnergy"] = item["energy1Total"]
+
+                if item.get("selfUsePercentage") is not None:
+                    plant["selfUsePercentage"] = item["selfUsePercentage"]
+                    plant["selfUsePercent"] = item["selfUsePercentage"]
+
+            elif data_type == "LOAD_ENERGY":
+                if item.get("energy1Today") is not None:
+                    plant["todayLoadEnergy"] = item["energy1Today"]
+
+                if item.get("energy1Total") is not None:
+                    plant["totalLoadEnergy"] = item["energy1Total"]
+
+            elif data_type == "BUY_AND_SELL":
+                if item.get("energy1Today") is not None:
+                    plant["todayBuyEnergy"] = item["energy1Today"]
+
+                if item.get("energy1Total") is not None:
+                    plant["totalBuyEnergy"] = item["energy1Total"]
+
+                if item.get("energy2Today") is not None:
+                    plant["todaySellEnergy"] = item["energy2Today"]
+
+                if item.get("energy2Total") is not None:
+                    plant["totalSellEnergy"] = item["energy2Total"]
+
+            elif data_type == "CHARGE_AND_DISCHARGE":
+                if item.get("energy1Today") is not None:
+                    plant["todayChargeEnergy"] = item["energy1Today"]
+
+                if item.get("energy1Total") is not None:
+                    plant["totalChargeEnergy"] = item["energy1Total"]
+
+                if item.get("energy2Today") is not None:
+                    plant["todayDisChargeEnergy"] = item["energy2Today"]
+
+                if item.get("energy2Total") is not None:
+                    plant["totalDisChargeEnergy"] = item["energy2Total"]
+
+        # Month/year chart statistics.
+        chart_series_map = {
+            "PV_PRODUCTION": "PvEnergy",
+            "CONSUMPTION": "LoadEnergy",
+            "IMPORT_ENERGY": "BuyEnergy",
+            "EXPORT_ENERGY": "SellEnergy",
+            "CHARGING_ENERGY": "BatChgEnergy",
+            "DISCHARGE_ENERGY": "BatDischgEnergy",
+        }
+
+        today = datetime.date.today()
+
+        chart_periods = (
+            (
+                "month",
+                {
+                    "chartDateType": 3,
+                    "chartMonth": today.strftime("%Y-%m"),
+                },
+            ),
+            (
+                "year",
+                {
+                    "chartDateType": 4,
+                    "chartYear": today.strftime("%Y"),
+                },
+            ),
+        )
+
+        for legacy_prefix, period_payload in chart_periods:
+            chart_response = _post_v2(
+                session,
+                region,
+                "/monitor/plant/chart/getCommonChartData",
+                {
+                    **period_payload,
+                    "snType": 1,
+                    "deviceSn": device_sn,
+                    "commonChartType": 3,
+                },
+            )
+            chart_response.raise_for_status()
+
+            chart_data = _parse_api_data(
+                chart_response.json(),
+                f"getCommonChartData {legacy_prefix} for "
+                f"{plant.get('plantName')}",
                 required=False,
             )
-            if stats_data is None:
-                continue
-            if "deviceSnList" in stats_data:
-                del stats_data["deviceSnList"]
-            if "moduleSnList" in stats_data:
-                del stats_data["moduleSnList"]
-            plant.update(stats_data)
 
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
+            if not isinstance(chart_data, dict):
+                continue
+
+            for series in chart_data.get("yAxis", []) or []:
+                suffix = chart_series_map.get(series.get("legendKey"))
+                if suffix is None:
+                    continue
+
+                total = 0.0
+                has_value = False
+
+                for value in series.get("dataList", []) or []:
+                    if value in (None, "", "--"):
+                        continue
+
+                    try:
+                        total += float(value)
+                        has_value = True
+                    except (TypeError, ValueError):
+                        continue
+
+                if has_value:
+                    plant[f"{legacy_prefix}{suffix}"] = round(total, 2)
+
+        # Derive daily environmental values using SAJ's own total ratios.
+        today_pv = plant.get("todayPvEnergy")
+        total_pv = plant.get("totalPvEnergy")
+
+        if today_pv is not None and total_pv not in (None, 0, 0.0):
+            total_co2 = plant.get("totalReduceCo2")
+            total_trees = plant.get("totalPlantTreeNum")
+            total_coal = plant.get("totalCoal")
+
+            if total_co2 is not None:
+                plant["todayReduceCo2"] = round(
+                    float(today_pv) * float(total_co2) / float(total_pv),
+                    4,
+                )
+
+            if total_trees is not None:
+                plant["todayPlantTreeNum"] = round(
+                    float(today_pv) * float(total_trees) / float(total_pv),
+                    4,
+                )
+
+            if total_coal is not None:
+                plant["todayCoal"] = round(
+                    float(today_pv) * float(total_coal) / float(total_pv),
+                    4,
+                )
 
 def web_get_device_list(region, session, plant_info):
-    """Retrieve a device list from the WEB Portal."""
+    """Retrieve devices from the SAJ Elekeeper v2 API."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain devices")
 
-    try:
-        for plant in plant_info["plantList"]:
-            data = {
+    def collect_device_sns(devices):
+        """Collect serial numbers from the v2 device tree."""
+        serials = []
+
+        for device in devices or []:
+            device_sn = device.get("deviceSn")
+            if device_sn:
+                serials.append(device_sn)
+
+            serials.extend(
+                collect_device_sns(device.get("children") or [])
+            )
+
+        return serials
+
+    for plant in plant_info["plantList"]:
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plantDevice/listForWeb",
+            {
                 "plantUid": plant["plantUid"],
-                "pageSize": 100,
-                "pageNo": 1,
-                "searchOfficeIdArr":"1",
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
+            },
+        )
+        response.raise_for_status()
 
-            signed = calc_signature(data)
+        device_data = _parse_api_data(
+            response.json(),
+            f"listForWeb for {plant.get('plantName')}",
+            required=False,
+        )
 
-            response = session.get(
-                base_url(region) + "/monitor/device/getDeviceList",
-                params = signed,
-                timeout=WEB_TIMEOUT
-            )
+        if not isinstance(device_data, list):
+            continue
 
-            response.raise_for_status()
+        plant["devices"] = device_data
 
-            if response.status_code != 200:
-                raise ValueError(f"Get device {plant['plantName']} deviceList error: {response.status_code}")
+        device_sn_list = plant.setdefault("deviceSnList", [])
+        for device_sn in collect_device_sns(device_data):
+            if device_sn not in device_sn_list:
+                device_sn_list.append(device_sn)
 
-            answer = response.json()
-            answer_data = _parse_api_data(
-                answer,
-                f"getDeviceList for {plant.get('plantName')}",
-                required=False,
-            )
-            if not answer_data or "list" not in answer_data:
-                continue
-
-            device_list = answer_data["list"]
-
-            if "deviceSnList" not in plant:
-                plant["deviceSnList"] = []
-
-            for device in device_list:
-                if "deviceSn" in device and device["deviceSn"] not in plant["deviceSnList"]:
-                    plant["deviceSnList"].append(device["deviceSn"])
-
-            plant.update({"devices": device_list})
-
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
 
 def web_get_device_info(region, session, plant_info):
-    """Retrieve device info from the WEB Portal."""
+    """Retrieve inverter details from the SAJ Elekeeper v2 API."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain device info")
 
-    try:
-        for plant in plant_info["plantList"]:
-            for device in plant["devices"]:
-                data = {
-                    "deviceSn": device["deviceSn"],
-                    'appProjectName': 'elekeeper',
-                    'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                    'lang': 'en',
-                    'timeStamp': int(time.time() * 1000),
-                    'random': generatkey(32),
-                    'clientId': 'esolar-monitor-admin',
-                }
+    for plant in plant_info["plantList"]:
+        for device in plant.get("devices", []):
+            device_sn = device.get("deviceSn")
+            if not device_sn:
+                continue
 
-                signed = calc_signature(data)
+            response = _post_v2(
+                session,
+                region,
+                "/monitor/device/baseInverterDetail",
+                {
+                    "deviceSn": device_sn,
+                },
+            )
+            response.raise_for_status()
 
-                response = session.get(
-                    base_url(region) + "/monitor/device/getOneDeviceInfo",
-                    params = signed,
-                    timeout=WEB_TIMEOUT
-                )
+            detail_data = _parse_api_data(
+                response.json(),
+                f"baseInverterDetail for {device_sn}",
+                required=False,
+            )
 
-                response.raise_for_status()
-
-                if response.status_code != 200:
-                    raise ValueError(f"Get device {device['deviceSn']} detail error: {response.status_code}")
-
-                device_detail = response.json()
-                detail_data = _parse_api_data(
-                    device_detail,
-                    f"getOneDeviceInfo for {device.get('deviceSn')}",
-                    required=False,
-                )
-                if detail_data is None:
-                    continue
+            if isinstance(detail_data, dict):
                 device.update(detail_data)
-
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
 
 def web_get_device_raw_data(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
@@ -986,114 +1083,103 @@ def web_get_device_raw_data(region, session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
+
 def web_get_plant_overview(region, session, plant_info):
-    """Retrieve plant overview from the WEB Portal."""
+    """Retrieve plant overview from the SAJ Elekeeper v2 API."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obain plants")
+        raise ValueError("Missing session identifier trying to obtain plant overview")
 
-    try:
-        current_timestamp_sec = time.time()
+    for plant in plant_info["plantList"]:
+        if (
+            plant.get("type") == 0
+            and (
+                plant.get("isInstallEms") == 1
+                or plant.get("isInstallLoraMeter") == 1
+            )
+        ):
+            continue
 
-        one_month_later = datetime.datetime.fromtimestamp(current_timestamp_sec) + relativedelta(months=1)
-        timestamp_one_month_later_ms = int(one_month_later.timestamp() * 1000)
+        device_sn = None
 
-        for plant in plant_info["plantList"]:
-            if plant.get("type") == 0 and (plant.get("isInstallEms") == 1 or plant.get("isInstallLoraMeter") == 1):
-                continue
+        if plant.get("deviceSn"):
+            device_sn = plant.get("deviceSn")
+        elif plant.get("deviceSnList"):
+            device_sn = plant["deviceSnList"][0]
 
-            data = {
+        if not device_sn:
+            continue
+
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plantHome/getDeviceEnergyFlowDiagram",
+            {
                 "plantUid": plant["plantUid"],
-                "refresh": timestamp_one_month_later_ms,
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
+                "sn": device_sn,
+                "snType": 1,
+            },
+        )
+        response.raise_for_status()
 
-            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
+        overview_data = _parse_api_data(
+            response.json(),
+            f"getDeviceEnergyFlowDiagram for {plant.get('plantName')}",
+            required=False,
+        )
 
-            signed = calc_signature(data)
+        if isinstance(overview_data, dict):
+            plant.update(overview_data)
 
-            response = session.get(
-                base_url(region) + "/monitor/home/getPlantGridOverviewInfo",
-                params = signed,
-                timeout=WEB_TIMEOUT
-            )
+            # v1 compatibility: legacy dashboard sensor expects this spelling.
+            if (
+                plant.get("outPutDirection") is None
+                and plant.get("outputDirection") is not None
+            ):
+                plant["outPutDirection"] = plant["outputDirection"]
 
-            response.raise_for_status()
-
-            if response.status_code != 200:
-                raise ValueError(f"Get plant {plant["plantName"]} overview data error: {response.status_code}")
-
-            overview = response.json()
-            overview_data = _parse_api_data(
-                overview,
-                f"getPlantGridOverviewInfo for {plant.get('plantName')}",
-                required=False,
-            )
-            if overview_data is not None:
-                plant.update(overview_data)
-
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
 
 def web_get_plant_flow_data(region, session, plant_info):
-    """Retrieve plant flow data from the WEB Portal."""
+    """Retrieve live plant energy flow data from Elekeeper v2."""
     if session is None:
-        raise ValueError("Missing session identifier trying to obtain plants")
+        raise ValueError("Missing session identifier trying to obtain flow data")
 
-    try:
-        for plant in plant_info["plantList"]:
-            data = {
+    for plant in plant_info["plantList"]:
+        device_sn = None
+
+        if plant.get("deviceSn"):
+            device_sn = plant.get("deviceSn")
+        elif plant.get("deviceSnList"):
+            device_sn = plant["deviceSnList"][0]
+
+        if not device_sn:
+            continue
+
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/plantHome/getDeviceEnergyFlowDiagram",
+            {
                 "plantUid": plant["plantUid"],
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
+                "sn": device_sn,
+                "snType": 1,
+            },
+        )
+        response.raise_for_status()
 
-            prepare_data_for_query(plant, data) #add deviceSn or emsSn if needed
+        flow_data = _parse_api_data(
+            response.json(),
+            f"getDeviceEnergyFlowDiagram for {plant.get('plantName')}",
+            required=False,
+        )
 
-            signed = calc_signature(data)
+        if isinstance(flow_data, dict):
+            plant.update(flow_data)
 
-            response = session.get(
-                base_url(region) + "/monitor/home/getDeviceEneryFlowData",  #typo from SAJ
-                params = signed,
-                timeout=WEB_TIMEOUT
-            )
-
-            response.raise_for_status()
-
-            if response.status_code != 200:
-                raise ValueError(f"Get plant {plant["plantName"]} energy flow data error: {response.status_code}")
-
-            flow = response.json()
-            flow_data = _parse_api_data(
-                flow,
-                f"getDeviceEneryFlowData for {plant.get('plantName')}",
-                required=False,
-            )
-            if flow_data is not None:
-                plant.update(flow_data)
-
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
+            if (
+                plant.get("outPutDirection") is None
+                and plant.get("outputDirection") is not None
+            ):
+                plant["outPutDirection"] = plant["outputDirection"]
 
 def _normalize_module_energy(energy_data, module_sn):
     """Map v2 meter/flow fields onto the module shape used by sensors."""
@@ -1227,61 +1313,111 @@ def web_get_sec_statistics(region, session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
+
 def web_get_batteries_data(region, session, plant_info):
-    """Retrieve batteries data from the WEB Portal."""
+    """Retrieve battery data from the SAJ Elekeeper v2 API."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain batteries")
 
-    try:
-        for plant in plant_info["plantList"]:
-            if "hasBattery" not in plant or plant["hasBattery"] != 1:
-                continue
+    for plant in plant_info["plantList"]:
+        if plant.get("hasBattery") != 1:
+            continue
 
-            data = {
-                "plantUid": plant["plantUid"],
-                "pageSize": 100,
-                "pageNo": 1,
-                "searchOfficeIdArr":"1",
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
+        devices = plant.get("devices") or []
 
-            signed = calc_signature(data)
+        device = next(
+            (
+                item
+                for item in devices
+                if item.get("deviceType") == 1
+                or item.get("type") == 1
+            ),
+            None,
+        )
 
-            response = session.get(
-                base_url(region) + "/monitor/battery/getBatteryList",  #typo from SAJ
-                params = signed,
-                timeout=WEB_TIMEOUT
+        if device is None:
+            device = next(
+                (item for item in devices if item.get("deviceSn")),
+                None,
             )
 
-            response.raise_for_status()
-            if response.status_code != 200:
-                raise ValueError(f"Get plant {plant["plantName"]} battery list data error: {response.status_code}")
+        if device is None:
+            continue
 
-            answer = response.json()
-            battery_data = _parse_api_data(
-                answer,
-                f"getBatteryList for {plant.get('plantName')}",
-                required=False,
-            )
-            if (
-                isinstance(battery_data, dict)
-                and "list" in battery_data
-            ):
-                plant["batteries"] = battery_data["list"]
+        device_sn = device.get("deviceSn")
+        if not device_sn:
+            continue
 
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
+        response = _post_v2(
+            session,
+            region,
+            "/monitor/device/getInverterBatteryEnergyDetailForApp",
+            {
+                "deviceSn": device_sn,
+            },
+        )
+        response.raise_for_status()
+
+        battery_data = _parse_api_data(
+            response.json(),
+            f"getInverterBatteryEnergyDetailForApp for {device_sn}",
+            required=False,
+        )
+
+        if not isinstance(battery_data, dict):
+            continue
+
+        battery_data["batSn"] = device_sn
+        battery_data.setdefault(
+            "batModel",
+            battery_data.get("batteryName"),
+        )
+        battery_data.setdefault("bmsSoftwareVersion", None)
+        battery_data.setdefault("bmsHardwareVersion", None)
+        battery_data.setdefault("bmsSn", None)
+
+        plant["batteries"] = [battery_data]
+        device.update(battery_data)
+
+        statistics = device.setdefault("deviceStatisticsData", {})
+
+        compatibility_keys = (
+            "batEnergyPercent",
+            "batCapacity",
+            "batCurrent",
+            "batPower",
+            "batVoltage",
+            "batTemperature",
+            "todayBatChgEnergy",
+            "todayBatDisEnergy",
+            "totalBatChgEnergy",
+            "totalBatDisEnergy",
+            "usableBatCapacity",
+            "batteryWorkTime",
+            "batteryDirection",
+            "runningState",
+            "updateDate",
+        )
+
+        for key in compatibility_keys:
+            if battery_data.get(key) is not None:
+                statistics[key] = battery_data[key]
+
+        if battery_data.get("batCapacity") is not None:
+            statistics["batCapcity"] = battery_data["batCapacity"]
+            statistics["batCapicity"] = battery_data["batCapacity"]
+
+        statistics["totalLoadPowerwatt"] = (
+            plant.get("totalLoadPowerwatt")
+            if plant.get("totalLoadPowerwatt") is not None
+            else plant.get("totalLoadPowerWatt")
+        )
+
+        if plant.get("gridDirection") is not None:
+            statistics["gridDirection"] = plant["gridDirection"]
+
+        if battery_data.get("batteryDirection") is not None:
+            statistics["batteryDirection"] = battery_data["batteryDirection"]
 
 def web_get_device_battery_data(region, session, plant_info):
     """Retrieve nuilt in battery data from the WEB Portal."""
@@ -1397,83 +1533,68 @@ def web_get_ems_list(region, session, plant_info):
     except requests.exceptions.RequestException as errr:
         raise requests.exceptions.RequestException(errr)
 
-def web_get_alarm_list(region, session, plant_info, state: int = 3):
-    """Retrieve a plant alarm list from the WEB Portal"""
 
+def web_get_alarm_list(region, session, plant_info, state: int = 3):
+    """Retrieve plant alarms from the SAJ Elekeeper v2 API."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain alarms list")
 
-    try:
-        for plant in plant_info["plantList"]:
-            plant["todayAlarmNum"] = plant.get("todayAlarmNum") or 0
-            for device in plant.get("devices", []):
-                device["todayAlarmNum"] = device.get("todayAlarmNum") or 0
+    for plant in plant_info["plantList"]:
+        plant["todayAlarmNum"] = plant.get("todayAlarmNum") or 0
 
-            data = {
-                'appProjectName': 'elekeeper',
-                'clientDate': datetime.date.today().strftime("%Y-%m-%d"),
-                'lang': 'en',
-                'timeStamp': int(time.time() * 1000),
-                'random': generatkey(32),
-                'clientId': 'esolar-monitor-admin',
-            }
-            now = datetime.datetime.now()
-            start = now - datetime.timedelta(days=3)
+        for device in plant.get("devices", []):
+            device["todayAlarmNum"] = device.get("todayAlarmNum") or 0
 
-            payload = {
+        response = _post_v2(
+            session,
+            region,
+            "/devicedata/alarm/device/userAlarmPage",
+            {
+                "plantUid": plant["plantUid"],
+                "alarmCommonState": state,
                 "pageNo": 1,
                 "pageSize": 10,
-                "alarmCommonState": state,              # 1-pending, 2-?, 3-closed, 4-manual close
-                "orderByIndex": 1,
-                "plantUid": plant["plantUid"],
-                "queryStartDate": start.strftime("%Y-%m-%d"),
-                "queryEndDate": now.strftime("%Y-%m-%d"),
-                "searchOfficeIdArr": 1,
-            }
+            },
+        )
+        response.raise_for_status()
 
-            signed = calc_signature(data)
+        answer_data = _parse_api_data(
+            response.json(),
+            f"userAlarmPage for {plant.get('plantName')}",
+            required=False,
+        )
 
-            response = session.post(
-                base_url(region) + "/alarm/device/userAlarmPage",
-                data = payload | signed,
-                timeout=WEB_TIMEOUT
-            )
+        if not isinstance(answer_data, dict):
+            continue
 
-            response.raise_for_status()
+        alarm_list = answer_data.get("list") or []
 
-            if response.status_code != 200:
-                raise ValueError(f"Get device {plant["plantUid"]} alarm list error: {response.status_code}")
+        for alarm in alarm_list:
+            alarm_start = alarm.get("alarmStartTime")
 
-            answer = response.json()
-            answer_data = _parse_api_data(
-                answer,
-                f"userAlarmPage for {plant.get('plantName')}",
-                required=False,
-            )
-            if answer_data and "list" in answer_data and len(answer_data["list"]) > 0:
-                alarm_list = answer_data["list"]
-                for alarm in alarm_list:
-                    if "alarmStartTime" in alarm and alarm["alarmStartTime"] is not None and is_today(alarm["alarmStartTime"]):
-                        plant["todayAlarmNum"] = (plant.get("todayAlarmNum") or 0) + 1
-                        for device in plant["devices"]:
-                            if device["deviceSn"] == alarm["deviceSn"]:
-                                device["todayAlarmNum"] = (device.get("todayAlarmNum") or 0) + 1
-                                if "alarmList" not in device:
-                                    device["alarmList"] = []
-                                del alarm["deviceSn"]
-                                del alarm["deviceSnType"]
-                                del alarm["plantUid"]
-                                del alarm["plantName"]
-                                del alarm["plantCountry"]
+            if not alarm_start or not is_today(alarm_start):
+                continue
 
-                                device["alarmList"].append(alarm)
-                                break
+            plant["todayAlarmNum"] = (
+                plant.get("todayAlarmNum") or 0
+            ) + 1
 
-    except requests.exceptions.HTTPError as errh:
-        raise requests.exceptions.HTTPError(errh)
-    except requests.exceptions.ConnectionError as errc:
-        raise requests.exceptions.ConnectionError(errc)
-    except requests.exceptions.Timeout as errt:
-        raise requests.exceptions.Timeout(errt)
-    except requests.exceptions.RequestException as errr:
-        raise requests.exceptions.RequestException(errr)
+            alarm_device_sn = alarm.get("deviceSn")
+
+            for device in plant.get("devices", []):
+                if device.get("deviceSn") != alarm_device_sn:
+                    continue
+
+                device["todayAlarmNum"] = (
+                    device.get("todayAlarmNum") or 0
+                ) + 1
+
+                device.setdefault("alarmList", [])
+
+                alarm_copy = dict(alarm)
+                alarm_copy.pop("deviceSn", None)
+                alarm_copy.pop("deviceSnType", None)
+                alarm_copy.pop("plantUid", None)
+
+                device["alarmList"].append(alarm_copy)
+                break
