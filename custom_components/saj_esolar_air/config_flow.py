@@ -208,8 +208,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     data=self.data,
                     options={
                         CONF_MONITORED_SITES: self.sites,
-                        CONF_INVERTER_SENSORS: False,
-                        CONF_PV_GRID_DATA: False,
+                        CONF_INVERTER_SENSORS: True,
+                        CONF_PV_GRID_DATA: True,
                         CONF_PLANT_UPDATE_INTERVAL: 10
                     },
                 )
@@ -230,8 +230,8 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
         if user_input is not None:
             if len(user_input[CONF_MONITORED_SITES]) > 0:
-                user_input.update({CONF_INVERTER_SENSORS: False})
-                user_input.update({CONF_PV_GRID_DATA: False})
+                user_input.update({CONF_INVERTER_SENSORS: True})
+                user_input.update({CONF_PV_GRID_DATA: True})
                 user_input.update({CONF_PLANT_UPDATE_INTERVAL: 10})
                 return self.async_create_entry(
                     title=CONF_TITLE, data=self.data, options=user_input

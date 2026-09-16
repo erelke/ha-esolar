@@ -182,8 +182,11 @@ def _fetch_esolar_data(
         web_get_plant_details(region, session, plant_info)
         web_get_device_list(region, session, plant_info)
         web_get_sec_statistics(region, session, plant_info)
+        web_get_module_details(region, session, plant_info)
+        web_get_meter_details(region, session, plant_info)
         web_get_plant_statistics(region, session, plant_info)
         web_get_plant_overview(region, session, plant_info)
+        _ensure_inverter_devices(plant_info)
         web_get_device_info(region, session, plant_info)
         web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
@@ -194,7 +197,7 @@ def _fetch_esolar_data(
             try:
                 if "hasBattery" in plant and plant["hasBattery"] == 1:
                     break
-                for device in plant["devices"]:
+                for device in plant.get("devices") or []:
                     stats = device.get("deviceStatisticsData") or {}
                     bat_pct = stats.get("batEnergyPercent")
                     device_bat_pct = device.get("batEnergyPercent")
@@ -695,7 +698,7 @@ def web_get_plant_details(region, session, plant_info):
         )
 
         if isinstance(detail_data, dict):
-            plant.update(detail_data)
+            _merge_plant_payload(plant, detail_data)
 
 
 def web_get_plant_statistics(region, session, plant_info):
@@ -742,9 +745,7 @@ def web_get_plant_statistics(region, session, plant_info):
         if not isinstance(stats_data, dict):
             continue
 
-        stats_data.pop("deviceSnList", None)
-        stats_data.pop("moduleSnList", None)
-        plant.update(stats_data)
+        _merge_plant_payload(plant, stats_data)
 
         # Environmental totals returned by Elekeeper v2.
         for item in stats_data.get("environmentalInformation", []) or []:
@@ -923,25 +924,551 @@ def web_get_plant_statistics(region, session, plant_info):
                     4,
                 )
 
+DEVICE_TYPE_INVERTER = 1
+DEVICE_TYPE_MODULE = 2
+DEVICE_TYPE_BATTERY = 3
+DEVICE_TYPE_METER = 4
+
+
+def _alias_device_sn(device):
+    """Copy sn onto deviceSn when listForWeb only provides sn."""
+    if not isinstance(device, dict):
+        return None
+    if not device.get("deviceSn") and device.get("sn"):
+        device["deviceSn"] = device["sn"]
+    return device.get("deviceSn") or device.get("moduleSn") or device.get("batSn")
+
+
+def _normalized_device_type(device):
+    """Return listForWeb deviceType as int: 1 inverter, 2 module, 3 battery, 4 meter."""
+    if not isinstance(device, dict):
+        return None
+    value = device.get("deviceType")
+    try:
+        if value is not None and value != "":
+            return int(value)
+    except (TypeError, ValueError):
+        pass
+    name = f"{device.get('deviceName') or ''} {device.get('deviceModel') or ''}".lower()
+    if "battery" in name:
+        return DEVICE_TYPE_BATTERY
+    if "meter" in name:
+        return DEVICE_TYPE_METER
+    if _is_module_device(device):
+        return DEVICE_TYPE_MODULE
+    return None
+
+
+def _is_module_device(device):
+    """Return True for AIO/WiFi/SEC communication modules, not inverters."""
+    if not isinstance(device, dict):
+        return False
+
+    if device.get("deviceType") in (2, "2", DEVICE_TYPE_MODULE):
+        return True
+    if isinstance(device.get("deviceType"), str) and str(device.get("deviceType")).lower() == "module":
+        return True
+
+    model = f"{device.get('deviceModel') or ''} {device.get('deviceName') or ''}".lower()
+    return "aio" in model or "wifi module" in model or "sec module" in model
+
+
+def _is_inverter_device(device):
+    """Return True for inverter nodes only (listForWeb deviceType 1)."""
+    if not isinstance(device, dict) or not _alias_device_sn(device):
+        return False
+    device_type = _normalized_device_type(device)
+    if device_type is not None:
+        return device_type in (DEVICE_TYPE_INVERTER, 0)
+    return not _is_module_device(device) and device_type not in (
+        DEVICE_TYPE_MODULE,
+        DEVICE_TYPE_BATTERY,
+        DEVICE_TYPE_METER,
+    )
+
+
+def _walk_device_nodes(devices, parent=None):
+    """Yield (node, parent_sn) for every node in a listForWeb tree."""
+    parent_sn = _alias_device_sn(parent) if parent else None
+    for device in devices or []:
+        if not isinstance(device, dict):
+            continue
+        _alias_device_sn(device)
+        yield device, parent_sn
+        yield from _walk_device_nodes(device.get("children") or [], device)
+
+
+def _module_role(device):
+    name = (device.get("deviceName") or "").lower()
+    model = (device.get("deviceModel") or "").lower()
+    blob = f"{name} {model}"
+    if "pv meter" in blob:
+        return "pv_meter"
+    if "grid meter" in blob or "meter" in name:
+        return "grid_meter"
+    if "sec" in blob:
+        return "sec"
+    if "wifi" in name:
+        return "wifi"
+    if "aio" in blob:
+        return "aio"
+    return "module"
+
+
+def _module_from_node(device, parent_sn=None):
+    sn = _alias_device_sn(device)
+    role = _module_role(device)
+    status_name = device.get("deviceStatusName") or device.get("moduleStatusName")
+    return {
+        "moduleSn": sn,
+        "moduleModel": device.get("deviceModel") or device.get("moduleModel"),
+        "moduleName": device.get("deviceName") or device.get("moduleName") or sn,
+        "moduleFw": device.get("softwareVersion") or device.get("moduleFw"),
+        "hardwareVersion": device.get("hardwareVersion"),
+        "deviceType": _normalized_device_type(device),
+        "moduleRole": role,
+        "moduleKey": f"{sn}_{role}",
+        "boundDeviceSn": parent_sn,
+        "deviceStatus": device.get("deviceStatus") or device.get("moduleStatus"),
+        "deviceStatusName": status_name,
+        "accessTime": device.get("accessTime"),
+        "dataUpdateTime": device.get("dataUpdateTime"),
+        "updateDate": device.get("dataUpdateTime") or device.get("accessTime"),
+        "meterType": device.get("meterType"),
+    }
+
+
+def _battery_from_node(device):
+    sn = device.get("batSn") or _alias_device_sn(device)
+    return {
+        "batSn": sn,
+        "batModel": device.get("deviceModel") or device.get("batModel"),
+        "batteryName": device.get("deviceName") or device.get("batteryName"),
+        "deviceSn": device.get("deviceSn") if device.get("deviceType") != DEVICE_TYPE_BATTERY else None,
+        "deviceType": DEVICE_TYPE_BATTERY,
+    }
+
+
+def _merge_named_modules(plant, incoming):
+    """Add or update a module, keeping Grid/PV meters with the same SN distinct."""
+    if not incoming or not incoming.get("moduleSn"):
+        return
+    if "modules" not in plant or plant["modules"] is None:
+        plant["modules"] = []
+    key = incoming.get("moduleKey") or incoming["moduleSn"]
+    for module in plant["modules"]:
+        existing = module.get("moduleKey") or module.get("moduleSn")
+        if existing == key:
+            module.update({k: v for k, v in incoming.items() if v is not None})
+            return
+    plant["modules"].append(incoming)
+
+
+def _collect_plant_topology(device_data):
+    """Split listForWeb into inverters, comms modules, batteries and meters."""
+    inverters = []
+    seen_inverters = set()
+    modules = []
+    batteries = []
+    for device, parent_sn in _walk_device_nodes(device_data):
+        device_type = _normalized_device_type(device)
+        sn = _alias_device_sn(device)
+        if device_type == DEVICE_TYPE_INVERTER and sn and sn not in seen_inverters:
+            if parent_sn:
+                device["boundDeviceSn"] = parent_sn
+            inverters.append(device)
+            seen_inverters.add(sn)
+        elif device_type == DEVICE_TYPE_MODULE:
+            modules.append(_module_from_node(device, parent_sn))
+        elif device_type == DEVICE_TYPE_BATTERY:
+            batteries.append(_battery_from_node(device))
+        elif device_type == DEVICE_TYPE_METER:
+            modules.append(_module_from_node(device, parent_sn))
+    return inverters, modules, batteries
+
+
+def _collect_inverter_devices(devices):
+    """Keep inverter nodes; leave AIO/WiFi/battery/meter children in place."""
+    inverters, _, _ = _collect_plant_topology(devices)
+    return inverters
+
+
+def _merge_plant_payload(plant, payload):
+    """Update plant fields without replacing the inverter device list."""
+    if not isinstance(payload, dict):
+        return
+    payload = dict(payload)
+    payload.pop("devices", None)
+    payload.pop("deviceSnList", None)
+    payload.pop("moduleSnList", None)
+    payload.pop("children", None)
+    plant.update(payload)
+
+
+def _ensure_inverter_devices(plant_info):
+    """Fill deviceSnList from listForWeb, or from plant energy-flow SN."""
+    for plant in plant_info["plantList"]:
+        devices = [
+            device
+            for device in (plant.get("devices") or [])
+            if _is_inverter_device(device)
+        ]
+        plant["devices"] = devices
+        sns = [device["deviceSn"] for device in devices if device.get("deviceSn")]
+        fallback = plant.get("sn") or plant.get("deviceSn")
+        if not sns and fallback:
+            _LOGGER.warning(
+                "Plant %s has no inverter from listForWeb; using %s",
+                plant.get("plantName"),
+                fallback,
+            )
+            plant["devices"] = [{"deviceSn": fallback, "deviceType": 1}]
+            sns = [fallback]
+        plant["deviceSnList"] = sns
+        _LOGGER.warning(
+            "Plant %s inverter SNs=%s",
+            plant.get("plantName"),
+            sns,
+        )
+
+
+def _compat_inverter_statistics(device, detail_data):
+    """Map v2 inverter detail fields onto the v1 deviceStatisticsData shape."""
+    stats = device.get("deviceStatisticsData")
+    if not isinstance(stats, dict):
+        stats = {}
+
+    nested = detail_data.get("deviceStatisticsData") if isinstance(detail_data, dict) else None
+    if isinstance(nested, dict):
+        stats.update(nested)
+
+    if stats.get("powerNow") is None:
+        for key in ("pvPower", "pac", "totalPvPower"):
+            value = device.get(key)
+            if value is not None:
+                stats["powerNow"] = value
+                break
+
+    if stats.get("todayPvEnergy") is None and device.get("todayPvEnergy") is not None:
+        stats["todayPvEnergy"] = device["todayPvEnergy"]
+
+    device["deviceStatisticsData"] = stats
+
+
+def _raw_value(*values):
+    """Return the first non-empty value."""
+    for value in values:
+        if value is None or value == "" or value == "--":
+            continue
+        return value
+    return None
+
+
+def _compat_raw_statistics(device, raw_data):
+    """Map findRawdataPageList live fields onto the v1 statistics shape."""
+    if not isinstance(raw_data, dict):
+        return
+
+    stats = device.get("deviceStatisticsData")
+    if not isinstance(stats, dict):
+        stats = {}
+
+    grid_list = raw_data.get("gridList")
+    if isinstance(grid_list, list) and grid_list:
+        stats["gridList"] = grid_list
+        device["gridList"] = grid_list
+
+    pv_list = raw_data.get("pvList")
+    if not isinstance(pv_list, list) or not pv_list:
+        pv_list = []
+        for index, channel in enumerate(raw_data.get("pvChannelList") or [], start=1):
+            if not isinstance(channel, dict):
+                continue
+            pv_list.append(
+                {
+                    "pvNo": channel.get("pvNo") or index,
+                    "pvvolt": _raw_value(channel.get("pvvolt"), channel.get("pvVolt")),
+                    "pvcurr": _raw_value(channel.get("pvcurr"), channel.get("pvCurr")),
+                    "pvpower": _raw_value(channel.get("pvpower"), channel.get("pvPower")),
+                }
+            )
+    if pv_list:
+        stats["pvList"] = pv_list
+
+    pvp = _raw_value(raw_data.get("pVP"), raw_data.get("PVP"))
+    if pvp is not None:
+        device["pVP"] = pvp
+
+    device["deviceStatisticsData"] = stats
+
+
+_METER_RAW_PREFIX = {5: "metera", 6: "meterb", 8: "metera"}
+
+
+def _module_related_to_inverter(module, inverter):
+    """True when a comm/meter module belongs to this inverter or its parent SEC."""
+    inverter_sn = inverter.get("deviceSn")
+    parent_sn = inverter.get("boundDeviceSn")
+    related = {sn for sn in (inverter_sn, parent_sn) if sn}
+    return module.get("moduleSn") in related or module.get("boundDeviceSn") in related
+
+
+def _raw_ci(raw_data, *keys):
+    """Return the first non-empty raw value, matching keys case-insensitively."""
+    value = _raw_value(*(raw_data.get(key) for key in keys if key))
+    if value is not None:
+        return value
+    lowered = {str(key).lower(): val for key, val in raw_data.items()}
+    return _raw_value(*(lowered.get(key.lower()) for key in keys if key))
+
+
+def _attach_raw_meter_to_modules(plant, inverter, raw_data):
+    """Copy findRawdata meter channels and module signal onto matching modules."""
+    if not isinstance(raw_data, dict):
+        return
+    for module in plant.get("modules") or []:
+        if not _module_related_to_inverter(module, inverter):
+            continue
+        if module.get("deviceType") == DEVICE_TYPE_MODULE:
+            if module.get("signalStrength") is None:
+                signal = _raw_ci(raw_data, "moduleSignal", "signalStrength")
+                if signal is not None:
+                    module["signalStrength"] = float(signal)
+            continue
+        if module.get("deviceType") != DEVICE_TYPE_METER:
+            continue
+        try:
+            meter_type = int(module.get("meterType") or 5)
+        except (TypeError, ValueError):
+            meter_type = 5
+        prefix = _METER_RAW_PREFIX.get(meter_type, "metera")
+        alt_prefix = "meterA" if prefix == "metera" else "meterB"
+        total = 0.0
+        has_power = False
+        for phase in (1, 2, 3):
+            volt = _raw_ci(
+                raw_data,
+                f"{prefix}volt{phase}",
+                f"{alt_prefix}Volt{phase}",
+            )
+            curr = _raw_ci(
+                raw_data,
+                f"{prefix}curr{phase}",
+                f"{alt_prefix}Curr{phase}",
+            )
+            freq = _raw_ci(
+                raw_data,
+                f"{prefix}freq{phase}",
+                f"{alt_prefix}Freq{phase}",
+            )
+            power = _raw_ci(
+                raw_data,
+                f"{prefix}powerwatt{phase}",
+                f"{prefix}power{phase}",
+                f"{alt_prefix}PowerWatt{phase}",
+                f"{alt_prefix}Power{phase}",
+            )
+            if volt is not None:
+                module[f"volt{phase}"] = float(volt)
+            if curr is not None:
+                module[f"curr{phase}"] = float(curr)
+            if freq is not None:
+                module[f"freq{phase}"] = float(freq)
+            if power is not None:
+                module[f"power{phase}"] = float(power)
+                total += float(power)
+                has_power = True
+        if has_power:
+            module["gridPower"] = total
+        else:
+            fallback_power = _raw_ci(
+                raw_data,
+                "ctGridPowerWatt" if prefix == "metera" else "ctPVPowerWatt",
+                "meterAPowerWatt" if prefix == "metera" else "meterBPowerWatt",
+            )
+            if fallback_power is not None:
+                module["gridPower"] = float(fallback_power)
+        if raw_data.get("datetime"):
+            module["updateDate"] = raw_data["datetime"]
+
+
+def web_get_module_details(region, session, plant_info):
+    """Retrieve live AIO/WiFi/SEC module detail (signal, firmware, status)."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain module details")
+
+    for plant in plant_info["plantList"]:
+        seen = set()
+        for module in plant.get("modules") or []:
+            if module.get("deviceType") != DEVICE_TYPE_MODULE:
+                continue
+            module_sn = module.get("moduleSn")
+            if not module_sn or module_sn in seen:
+                continue
+            seen.add(module_sn)
+            try:
+                response = _post_v2(
+                    session,
+                    region,
+                    "/monitor/module/baseModuleDetail",
+                    {"moduleSn": module_sn},
+                )
+                response.raise_for_status()
+                detail = _parse_api_data(
+                    response.json(),
+                    f"baseModuleDetail for {module_sn}",
+                    required=False,
+                )
+            except SessionAuthError:
+                raise
+            except (requests.exceptions.RequestException, ValueError) as err:
+                _LOGGER.debug("baseModuleDetail failed for %s: %s", module_sn, err)
+                continue
+            if not isinstance(detail, dict):
+                continue
+            for key in (
+                "signalStrength",
+                "signalStrengthValue",
+                "moduleStatus",
+                "moduleStatusName",
+                "hardwareVersion",
+                "softwareVersion",
+                "updateDate",
+                "moduleModel",
+                "modulePc",
+                "ccid",
+            ):
+                if detail.get(key) is not None:
+                    module[key] = detail[key]
+            if detail.get("moduleStatusName"):
+                module["deviceStatusName"] = detail["moduleStatusName"]
+            if detail.get("moduleStatus") is not None:
+                module["deviceStatus"] = detail["moduleStatus"]
+            if detail.get("softwareVersion"):
+                module["moduleFw"] = detail["softwareVersion"]
+            if detail.get("aliasName") not in (None, "", "--"):
+                module["aliasName"] = detail["aliasName"]
+            binds = detail.get("moduleBindDeviceDetailList")
+            if isinstance(binds, list) and binds:
+                module["moduleBindDeviceDetailList"] = binds
+                if not module.get("boundDeviceSn"):
+                    module["boundDeviceSn"] = binds[0].get("sn")
+
+
+def _apply_meter_detail(module, detail):
+    """Copy live getMeterDetail fields onto a Grid/PV meter module."""
+    if not isinstance(detail, dict):
+        return
+    if detail.get("meterName"):
+        module["moduleName"] = detail["meterName"]
+    if detail.get("meterType"):
+        module["moduleModel"] = detail["meterType"]
+    if detail.get("updateDate"):
+        module["updateDate"] = detail["updateDate"]
+    if detail.get("sn"):
+        module["moduleSn"] = module.get("moduleSn") or detail["sn"]
+
+    total = 0.0
+    has_power = False
+    for item in detail.get("secMeterList") or []:
+        if not isinstance(item, dict):
+            continue
+        try:
+            phase = int(item.get("seq") or 0)
+        except (TypeError, ValueError):
+            continue
+        if phase not in (1, 2, 3):
+            continue
+        volt = _raw_value(item.get("volt"))
+        curr = _raw_value(item.get("curr"))
+        freq = _raw_value(item.get("freq"))
+        power = _raw_value(item.get("power"))
+        power_factor = _raw_value(item.get("powerFactor"))
+        if volt is not None:
+            module[f"volt{phase}"] = float(volt)
+        if curr is not None:
+            module[f"curr{phase}"] = float(curr)
+        if freq is not None:
+            module[f"freq{phase}"] = float(freq)
+        if power is not None:
+            module[f"power{phase}"] = float(power)
+            total += float(power)
+            has_power = True
+        if power_factor is not None:
+            module[f"powerFactor{phase}"] = float(power_factor)
+
+    if has_power:
+        module["gridPower"] = total
+    else:
+        fallback = _raw_value(detail.get("gridPower"), detail.get("pvPower"))
+        if fallback is not None:
+            module["gridPower"] = float(fallback)
+
+    for key in ("impEp", "expEp", "todayImpEp", "todayExpEp"):
+        value = _raw_value(detail.get(key))
+        if value is None:
+            continue
+        try:
+            module[key] = float(value)
+        except (TypeError, ValueError):
+            continue
+
+
+def web_get_meter_details(region, session, plant_info):
+    """Retrieve live Grid/PV meter readings from plantems/getMeterDetail."""
+    if session is None:
+        raise ValueError("Missing session identifier trying to obtain meter details")
+
+    for plant in plant_info["plantList"]:
+        seen = set()
+        for module in plant.get("modules") or []:
+            if module.get("deviceType") != DEVICE_TYPE_METER:
+                continue
+            module_sn = module.get("moduleSn")
+            if not module_sn:
+                continue
+            try:
+                meter_type = int(module.get("meterType") or 5)
+            except (TypeError, ValueError):
+                meter_type = 5
+            key = (module_sn, meter_type)
+            if key in seen:
+                continue
+            seen.add(key)
+            try:
+                response = _post_v2(
+                    session,
+                    region,
+                    "/monitor/plantems/getMeterDetail",
+                    {
+                        "plantUid": plant["plantUid"],
+                        "deviceSn": module_sn,
+                        "meterType": meter_type,
+                    },
+                )
+                response.raise_for_status()
+                detail = _parse_api_data(
+                    response.json(),
+                    f"getMeterDetail for {module_sn} type={meter_type}",
+                    required=False,
+                )
+            except SessionAuthError:
+                raise
+            except (requests.exceptions.RequestException, ValueError) as err:
+                _LOGGER.debug(
+                    "getMeterDetail failed for %s type=%s: %s",
+                    module_sn,
+                    meter_type,
+                    err,
+                )
+                continue
+            _apply_meter_detail(module, detail)
+
+
 def web_get_device_list(region, session, plant_info):
     """Retrieve devices from the SAJ Elekeeper v2 API."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain devices")
-
-    def collect_device_sns(devices):
-        """Collect serial numbers from the v2 device tree."""
-        serials = []
-
-        for device in devices or []:
-            device_sn = device.get("deviceSn")
-            if device_sn:
-                serials.append(device_sn)
-
-            serials.extend(
-                collect_device_sns(device.get("children") or [])
-            )
-
-        return serials
 
     for plant in plant_info["plantList"]:
         response = _post_v2(
@@ -960,15 +1487,74 @@ def web_get_device_list(region, session, plant_info):
             required=False,
         )
 
+        if isinstance(device_data, dict):
+            _LOGGER.warning(
+                "listForWeb for %s returned dict keys=%s",
+                plant.get("plantName"),
+                list(device_data.keys()),
+            )
+            device_data = (
+                device_data.get("list")
+                or device_data.get("records")
+                or device_data.get("devices")
+            )
+
         if not isinstance(device_data, list):
+            _LOGGER.warning(
+                "listForWeb for %s is not a list: %s",
+                plant.get("plantName"),
+                type(device_data).__name__,
+            )
             continue
 
-        plant["devices"] = device_data
+        summary = [
+            {
+                "sn": device.get("deviceSn") or device.get("sn"),
+                "deviceType": device.get("deviceType"),
+                "type": device.get("type"),
+                "model": device.get("deviceModel"),
+                "name": device.get("deviceName"),
+                "children": len(device.get("children") or []),
+            }
+            for device in device_data
+            if isinstance(device, dict)
+        ]
+        _LOGGER.debug("listForWeb for %s nodes=%s", plant.get("plantName"), summary)
 
-        device_sn_list = plant.setdefault("deviceSnList", [])
-        for device_sn in collect_device_sns(device_data):
-            if device_sn not in device_sn_list:
-                device_sn_list.append(device_sn)
+        inverters, modules, batteries = _collect_plant_topology(device_data)
+        if not inverters:
+            _LOGGER.warning(
+                "listForWeb for %s returned no inverters (payload type=%s)",
+                plant.get("plantName"),
+                type(device_data).__name__,
+            )
+
+        plant["devices"] = inverters
+        plant["deviceSnList"] = [
+            device["deviceSn"]
+            for device in inverters
+            if device.get("deviceSn")
+        ]
+        for module in modules:
+            _merge_named_modules(plant, module)
+        if batteries:
+            if not plant.get("batteries"):
+                plant["batteries"] = batteries
+            plant["hasBattery"] = 1
+        if modules:
+            sns = plant.get("moduleSnList") or []
+            for module in modules:
+                sn = module.get("moduleSn")
+                if sn and sn not in sns:
+                    sns.append(sn)
+            plant["moduleSnList"] = sns
+        _LOGGER.debug(
+            "listForWeb for %s inverters=%s modules=%s batteries=%s",
+            plant.get("plantName"),
+            plant["deviceSnList"],
+            [m.get("moduleKey") for m in plant.get("modules") or []],
+            [b.get("batSn") for b in plant.get("batteries") or []],
+        )
 
 
 def web_get_device_info(region, session, plant_info):
@@ -979,7 +1565,7 @@ def web_get_device_info(region, session, plant_info):
     for plant in plant_info["plantList"]:
         for device in plant.get("devices", []):
             device_sn = device.get("deviceSn")
-            if not device_sn:
+            if not device_sn or not _is_inverter_device(device):
                 continue
 
             response = _post_v2(
@@ -1000,6 +1586,7 @@ def web_get_device_info(region, session, plant_info):
 
             if isinstance(detail_data, dict):
                 device.update(detail_data)
+                _compat_inverter_statistics(device, detail_data)
 
 def web_get_device_raw_data(region, session, plant_info):
     """Retrieve platUid from the WEB Portal using web_authenticate."""
@@ -1008,8 +1595,8 @@ def web_get_device_raw_data(region, session, plant_info):
 
     try:
         for plant in plant_info["plantList"]:
-            for device in plant["devices"]:
-                if device.get("type", 0) != 0:
+            for device in plant.get("devices") or []:
+                if not _is_inverter_device(device):
                     continue
 
                 data = {
@@ -1060,18 +1647,28 @@ def web_get_device_raw_data(region, session, plant_info):
                     continue
 
                 raw_data = raw_data_payload["list"][0]
+                _compat_raw_statistics(device, raw_data)
+                _attach_raw_meter_to_modules(plant, device, raw_data)
                 add_data = {}
-                keys = ["deviceTemp", "deviceTempStr", "backupTotalLoadPowerWatt", "isShowModuleSignal", "moduleSignal", "pVP", "pac"]
+                keys = [
+                    "deviceTemp",
+                    "deviceTempStr",
+                    "backupTotalLoadPowerWatt",
+                    "isShowModuleSignal",
+                    "moduleSignal",
+                    "pVP",
+                    "pac",
+                ]
                 for key in keys:
-                    if key in raw_data:
+                    if key in raw_data and raw_data[key] is not None:
                         add_data[key] = raw_data[key]
-                    else:
-                        add_data[key] = 0
+                if add_data.get("pVP") is None and raw_data.get("PVP") is not None:
+                    add_data["pVP"] = raw_data["PVP"]
 
                 if "datetime" in raw_data:
-                    add_data['raw_datetime'] = raw_data["datetime"]
+                    add_data["raw_datetime"] = raw_data["datetime"]
                 else:
-                    add_data['raw_datetime'] = ''
+                    add_data["raw_datetime"] = ""
                 device.update(add_data)
 
     except requests.exceptions.HTTPError as errh:
@@ -1128,7 +1725,7 @@ def web_get_plant_overview(region, session, plant_info):
         )
 
         if isinstance(overview_data, dict):
-            plant.update(overview_data)
+            _merge_plant_payload(plant, overview_data)
 
             # v1 compatibility: legacy dashboard sensor expects this spelling.
             if (
@@ -1173,7 +1770,7 @@ def web_get_plant_flow_data(region, session, plant_info):
         )
 
         if isinstance(flow_data, dict):
-            plant.update(flow_data)
+            _merge_plant_payload(plant, flow_data)
 
             if (
                 plant.get("outPutDirection") is None
@@ -1201,11 +1798,29 @@ def _merge_plant_module(plant, module_sn, payload):
         return
     if "modules" not in plant or plant["modules"] is None:
         plant["modules"] = []
+    preferred = None
+    fallback = None
     for plant_module in plant["modules"]:
-        if plant_module.get("moduleSn") == module_sn:
-            plant_module.update(payload)
-            return
-    plant["modules"].append(payload)
+        if plant_module.get("moduleSn") != module_sn:
+            continue
+        if plant_module.get("moduleRole") == "sec" or plant_module.get(
+            "deviceType"
+        ) == DEVICE_TYPE_MODULE:
+            preferred = plant_module
+            break
+        if fallback is None:
+            fallback = plant_module
+    target = preferred or fallback
+    if target is not None:
+        target.update({k: v for k, v in payload.items() if v is not None})
+        if not target.get("moduleKey"):
+            target["moduleKey"] = f"{module_sn}_{target.get('moduleRole') or 'module'}"
+        return
+    incoming = dict(payload)
+    incoming.setdefault("moduleSn", module_sn)
+    incoming.setdefault("moduleRole", _module_role(incoming))
+    incoming.setdefault("moduleKey", f"{module_sn}_{incoming['moduleRole']}")
+    plant["modules"].append(incoming)
 
 
 def _fetch_module_energy(region, session, plant, module_sn):
@@ -1315,109 +1930,58 @@ def web_get_sec_statistics(region, session, plant_info):
 
 
 def web_get_batteries_data(region, session, plant_info):
-    """Retrieve battery data from the SAJ Elekeeper v2 API."""
+    """Retrieve the plant battery pack list (v1 getBatteryList still works)."""
     if session is None:
         raise ValueError("Missing session identifier trying to obtain batteries")
 
-    for plant in plant_info["plantList"]:
-        if plant.get("hasBattery") != 1:
-            continue
+    try:
+        for plant in plant_info["plantList"]:
+            data = {
+                "plantUid": plant["plantUid"],
+                "pageSize": 100,
+                "pageNo": 1,
+                "searchOfficeIdArr": "1",
+                "appProjectName": "elekeeper",
+                "clientDate": datetime.date.today().strftime("%Y-%m-%d"),
+                "lang": "en",
+                "timeStamp": int(time.time() * 1000),
+                "random": generatkey(32),
+                "clientId": "esolar-monitor-admin",
+            }
 
-        devices = plant.get("devices") or []
-
-        device = next(
-            (
-                item
-                for item in devices
-                if item.get("deviceType") == 1
-                or item.get("type") == 1
-            ),
-            None,
-        )
-
-        if device is None:
-            device = next(
-                (item for item in devices if item.get("deviceSn")),
-                None,
+            signed = calc_signature(data)
+            response = session.get(
+                base_url(region) + "/monitor/battery/getBatteryList",
+                params=signed,
+                timeout=WEB_TIMEOUT,
             )
+            response.raise_for_status()
 
-        if device is None:
-            continue
+            battery_data = _parse_api_data(
+                response.json(),
+                f"getBatteryList for {plant.get('plantName')}",
+                required=False,
+            )
+            api_list = None
+            if isinstance(battery_data, dict):
+                api_list = battery_data.get("list")
+            elif isinstance(battery_data, list):
+                api_list = battery_data
 
-        device_sn = device.get("deviceSn")
-        if not device_sn:
-            continue
+            if api_list:
+                plant["batteries"] = api_list
+                plant["hasBattery"] = 1
+            elif plant.get("batteries"):
+                plant["hasBattery"] = 1
 
-        response = _post_v2(
-            session,
-            region,
-            "/monitor/device/getInverterBatteryEnergyDetailForApp",
-            {
-                "deviceSn": device_sn,
-            },
-        )
-        response.raise_for_status()
-
-        battery_data = _parse_api_data(
-            response.json(),
-            f"getInverterBatteryEnergyDetailForApp for {device_sn}",
-            required=False,
-        )
-
-        if not isinstance(battery_data, dict):
-            continue
-
-        battery_data["batSn"] = device_sn
-        battery_data.setdefault(
-            "batModel",
-            battery_data.get("batteryName"),
-        )
-        battery_data.setdefault("bmsSoftwareVersion", None)
-        battery_data.setdefault("bmsHardwareVersion", None)
-        battery_data.setdefault("bmsSn", None)
-
-        plant["batteries"] = [battery_data]
-        device.update(battery_data)
-
-        statistics = device.setdefault("deviceStatisticsData", {})
-
-        compatibility_keys = (
-            "batEnergyPercent",
-            "batCapacity",
-            "batCurrent",
-            "batPower",
-            "batVoltage",
-            "batTemperature",
-            "todayBatChgEnergy",
-            "todayBatDisEnergy",
-            "totalBatChgEnergy",
-            "totalBatDisEnergy",
-            "usableBatCapacity",
-            "batteryWorkTime",
-            "batteryDirection",
-            "runningState",
-            "updateDate",
-        )
-
-        for key in compatibility_keys:
-            if battery_data.get(key) is not None:
-                statistics[key] = battery_data[key]
-
-        if battery_data.get("batCapacity") is not None:
-            statistics["batCapcity"] = battery_data["batCapacity"]
-            statistics["batCapicity"] = battery_data["batCapacity"]
-
-        statistics["totalLoadPowerwatt"] = (
-            plant.get("totalLoadPowerwatt")
-            if plant.get("totalLoadPowerwatt") is not None
-            else plant.get("totalLoadPowerWatt")
-        )
-
-        if plant.get("gridDirection") is not None:
-            statistics["gridDirection"] = plant["gridDirection"]
-
-        if battery_data.get("batteryDirection") is not None:
-            statistics["batteryDirection"] = battery_data["batteryDirection"]
+    except requests.exceptions.HTTPError as errh:
+        raise requests.exceptions.HTTPError(errh)
+    except requests.exceptions.ConnectionError as errc:
+        raise requests.exceptions.ConnectionError(errc)
+    except requests.exceptions.Timeout as errt:
+        raise requests.exceptions.Timeout(errt)
+    except requests.exceptions.RequestException as errr:
+        raise requests.exceptions.RequestException(errr)
 
 def web_get_device_battery_data(region, session, plant_info):
     """Retrieve nuilt in battery data from the WEB Portal."""
@@ -1426,7 +1990,7 @@ def web_get_device_battery_data(region, session, plant_info):
 
     try:
         for plant in plant_info["plantList"]:
-            for device in plant["devices"]:
+            for device in plant.get("devices") or []:
                 if device.get("hasBattery",0) == 0 or device.get("type",0) != 2: #only for devices with builtin batteries
                     continue
 

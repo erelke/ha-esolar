@@ -7,6 +7,55 @@ import logging
 from .elekeeper import extract_number, split_camel_case, extract_date
 
 _LOGGER = logging.getLogger(__name__)
+
+
+def _safe_process_data(entity) -> None:
+    """Apply sensor updates without crashing on missing v2 fields."""
+    try:
+        entity.process_data()
+    except (KeyError, TypeError, ValueError) as err:
+        _LOGGER.debug(
+            "Incomplete SAJ payload for %s: %s",
+            getattr(entity, "entity_id", entity.__class__.__name__),
+            err,
+        )
+        entity._attr_available = False
+        entity._attr_native_value = None
+
+
+def _kit_stats(kit: dict | None) -> dict:
+    stats = (kit or {}).get("deviceStatisticsData")
+    return stats if isinstance(stats, dict) else {}
+
+
+def _first_number(*values):
+    for value in values:
+        if value in (None, "", "--"):
+            continue
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            continue
+    return None
+
+
+def _grid_phase_defs(device: dict) -> list[dict]:
+    """Return grid phases from live data, or a model-based fallback."""
+    grid_list = _kit_stats(device).get("gridList") or device.get("gridList") or []
+    if isinstance(grid_list, list) and grid_list:
+        return grid_list
+    model = f"{device.get('deviceModel') or ''} {device.get('deviceName') or ''}".upper()
+    count = 3 if any(token in model for token in ("-T2", "-T3", " T2", " T3")) else 1
+    return [{"gridNo": index} for index in range(1, count + 1)]
+
+
+def _pv_string_defs(device: dict) -> list[dict]:
+    """Return PV strings from live data, or two MPPT inputs."""
+    pv_list = _kit_stats(device).get("pvList") or []
+    if isinstance(pv_list, list) and pv_list:
+        return pv_list
+    return [{"pvNo": 1}, {"pvNo": 2}]
+
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -15,10 +64,12 @@ from homeassistant.components.sensor import (
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
+    SIGNAL_STRENGTH_DECIBELS_MILLIWATT,
     UnitOfEnergy,
     UnitOfPower,
     UnitOfElectricPotential,
     UnitOfElectricCurrent,
+    UnitOfFrequency,
     UnitOfTemperature,
     EntityCategory,
 )
@@ -103,6 +154,8 @@ ICON_UPDATE = "mdi:update"
 ICON_ALARM = "mdi:alarm-light"
 ICON_CURRENT_DC = "mdi:current-dc"
 ICON_CURRENT_AC = "mdi:current-ac"
+ICON_WIFI = "mdi:wifi"
+ICON_STATUS = "mdi:check-circle-outline"
 
 from .sensor_helpers import offline_blocks_live_sensor
 
@@ -127,8 +180,8 @@ async def async_setup_entry(
     bat_entities: list[ESolarBattery] = []
     esolar_data: dict = coordinator.data
     my_plants = entry.options.get(CONF_MONITORED_SITES)
-    use_inverter_sensors = entry.options.get(CONF_INVERTER_SENSORS)
-    use_pv_grid_attributes = entry.options.get(CONF_PV_GRID_DATA)
+    use_inverter_sensors = entry.options.get(CONF_INVERTER_SENSORS, True)
+    use_pv_grid_attributes = entry.options.get(CONF_PV_GRID_DATA, True)
 
     if my_plants is None:
         return
@@ -231,8 +284,14 @@ async def async_setup_entry(
                     )
 
 
+            _LOGGER.warning(
+                "Plant %s inverter_sensors=%s deviceSnList=%s",
+                plant["plantName"],
+                use_inverter_sensors,
+                plant.get("deviceSnList"),
+            )
             if use_inverter_sensors:
-                for device in plant["deviceSnList"]:
+                for device in plant.get("deviceSnList") or []:
                     _LOGGER.debug(
                         "Setting up ESolarInverterEnergyTotal sensor for %s and device %s",
                         plant["plantName"],
@@ -257,18 +316,20 @@ async def async_setup_entry(
 
                     for kit in plant["devices"]:
                         if kit["deviceSn"] == device:
-                            if "pvList" in kit["deviceStatisticsData"]:
-                                for pv in kit["deviceStatisticsData"]["pvList"]:
-                                    device_entities.append(
-                                        ESolarInverterPV( coordinator, plant["plantName"], plant["plantUid"], device, pv['pvNo'])
-                                    )
-                                    device_entities.append(
-                                        ESolarInverterPC(coordinator, plant["plantName"], plant["plantUid"], device, pv['pvNo'])
-                                    )
-                                    device_entities.append(
-                                        ESolarInverterPW(coordinator, plant["plantName"], plant["plantUid"], device, pv['pvNo'])
-                                    )
-                            if kit.get("deviceTemp", 0) != 0 or kit.get("type", 0) == 0:
+                            for pv in _pv_string_defs(kit):
+                                pv_no = pv.get("pvNo")
+                                if pv_no is None:
+                                    continue
+                                device_entities.append(
+                                    ESolarInverterPV( coordinator, plant["plantName"], plant["plantUid"], device, pv_no)
+                                )
+                                device_entities.append(
+                                    ESolarInverterPC(coordinator, plant["plantName"], plant["plantUid"], device, pv_no)
+                                )
+                                device_entities.append(
+                                    ESolarInverterPW(coordinator, plant["plantName"], plant["plantUid"], device, pv_no)
+                                )
+                            if kit.get("deviceTemp", 0) != 0 or kit.get("deviceType") == 1:
                                 device_entities.append(
                                     ESolarInverterTemperature(coordinator, plant["plantName"], plant["plantUid"], device)
                                 )
@@ -287,7 +348,7 @@ async def async_setup_entry(
                     )
 
             if use_inverter_sensors and has_battery:
-                for device_sn in plant["deviceSnList"]:
+                for device_sn in plant.get("deviceSnList") or []:
                     for device in plant["devices"]:
                         if device["deviceSn"] == device_sn:
                             device_stats = device.get("deviceStatisticsData") or {}
@@ -312,17 +373,26 @@ async def async_setup_entry(
                                 )
 
             if use_pv_grid_attributes: # in all types
-                for device_sn in plant["deviceSnList"]:
-                    for device in plant["devices"]:
+                for device_sn in plant.get("deviceSnList") or []:
+                    for device in plant.get("devices") or []:
                         if device["deviceSn"] == device_sn:
-                            if "gridList" in device["deviceStatisticsData"]:
-                                for grid in device["deviceStatisticsData"]["gridList"]:
-                                    device_entities.append(
-                                        ESolarInverterGV(coordinator, plant["plantName"], plant["plantUid"], device_sn, grid["gridNo"])
-                                    )
-                                    device_entities.append(
-                                        ESolarInverterGC(coordinator, plant["plantName"], plant["plantUid"], device_sn, grid["gridNo"])
-                                    )
+                            _LOGGER.debug(
+                                "Plant %s %s gridList=%s pvList=%s",
+                                plant["plantName"],
+                                device_sn,
+                                _kit_stats(device).get("gridList"),
+                                _kit_stats(device).get("pvList"),
+                            )
+                            for grid in _grid_phase_defs(device):
+                                grid_no = grid.get("gridNo")
+                                if grid_no is None:
+                                    continue
+                                device_entities.append(
+                                    ESolarInverterGV(coordinator, plant["plantName"], plant["plantUid"], device_sn, grid_no)
+                                )
+                                device_entities.append(
+                                    ESolarInverterGC(coordinator, plant["plantName"], plant["plantUid"], device_sn, grid_no)
+                                )
                             device_entities.append(
                                 ESolarInverterGridPowerWatt(coordinator, plant["plantName"], plant["plantUid"], device_sn)
                             )
@@ -331,12 +401,12 @@ async def async_setup_entry(
                 for module in plant["modules"]:
                     if "moduleSn" in module and module["moduleSn"] is not None:
                         _LOGGER.debug(
-                            "Setting up ESolarSensorMeterPower-power for %s and module %s",
+                            "Setting up module sensors for %s and module %s",
                             plant["plantName"],
                             module["moduleSn"],
                         )
-                        meter_entities.append(
-                            ESolarSensorMeterPower( coordinator, plant["plantName"], plant["plantUid"], module["moduleSn"])
+                        meter_entities.extend(
+                            _create_module_sensors(coordinator, plant, module)
                         )
 
             if "batteries" in plant and plant["batteries"] is not None:
@@ -462,12 +532,12 @@ class ESolarPlant(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
-        self.process_data()
+        _safe_process_data(self)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.process_data()
+        _safe_process_data(self)
         self.async_write_ha_state()
 
     @property
@@ -514,11 +584,14 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
                 if "devices" in plant and plant["devices"] is not None:
                     for device in plant["devices"]:
                         if device["deviceSn"] == self._inverter_sn:
-                            self._device_model = device["deviceModel"] or None
-                            self._hw_version = device["masterMCUFw"] or None
-                            self._sw_version = device["displayFw"] or None
-                            #self._device_name = f"Inverter {device["aliases"]}" or f"Inverter {device["deviceSn"]}" or None
-                            self._device_pc = device["devicePc"] or None
+                            self._device_model = device.get("deviceModel") or device.get("inverterModel")
+                            self._hw_version = (
+                                device.get("masterMCUFw")
+                                or device.get("masterMcuFw")
+                                or device.get("masterControlFw")
+                            )
+                            self._sw_version = device.get("displayFw") or device.get("softwareVersion")
+                            self._device_pc = device.get("devicePc")
 
         device_info = DeviceInfo(
             manufacturer=MANUFACTURER,
@@ -536,12 +609,12 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
-        self.process_data()
+        _safe_process_data(self)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.process_data()
+        _safe_process_data(self)
         self.async_write_ha_state()
 
     @property
@@ -553,7 +626,15 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
     """Representation of a generic ESolar sensor."""
 
-    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid, module_sn = None) -> None:
+    def __init__(
+        self,
+        coordinator: ESolarCoordinator,
+        plant_name,
+        plant_uid,
+        module_sn=None,
+        module_role=None,
+        module_name=None,
+    ) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator)
 
@@ -561,10 +642,13 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
         self._plant_name = plant_name
         self._plant_uid = plant_uid
         self._module_sn = module_sn
+        self._module_role = module_role or "meter"
+        self._module_key = f"{module_sn}_{self._module_role}"
 
-        self._device_name: None | str = f"Meter {module_sn}"
+        self._device_name: None | str = module_name or f"Meter {module_sn}"
         self._device_model: None | str = METER_MODEL
         self._sw_version: None | str = None
+        self._hw_version: None | str = None
 
     def _offline_blocks_live_sensor(
         self,
@@ -586,9 +670,14 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
             if plant["plantName"] == self._plant_name:
                 if "modules" in plant and plant["modules"] is not None:
                     for module in plant["modules"]:
-                        if module["moduleSn"] == self._module_sn:
-                            self._device_model = module["moduleModel"] or None
-                            self._sw_version = module["moduleFw"] or None
+                        same_sn = module.get("moduleSn") == self._module_sn
+                        same_role = (module.get("moduleRole") or "meter") == self._module_role
+                        if same_sn and same_role:
+                            self._device_model = module.get("moduleModel")
+                            self._sw_version = module.get("moduleFw")
+                            self._hw_version = module.get("hardwareVersion")
+                            if module.get("moduleName"):
+                                self._device_name = module["moduleName"]
                             break
 
         device_info = DeviceInfo(
@@ -597,9 +686,10 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
             name=self._device_name,
             serial_number=self._module_sn,
             sw_version=self._sw_version,
+            hw_version=self._hw_version,
             via_device=(DOMAIN, self._plant_uid),
             identifiers={
-                (DOMAIN, f"{self._plant_uid}_meter_{self._module_sn}"),
+                (DOMAIN, f"{self._plant_uid}_meter_{self._module_key}"),
             },
         )
 
@@ -607,12 +697,12 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
-        self.process_data()
+        _safe_process_data(self)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.process_data()
+        _safe_process_data(self)
         self.async_write_ha_state()
 
     @property
@@ -660,11 +750,11 @@ class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
             if plant["plantName"] == self._plant_name:
                 if "batteries" in plant and plant["batteries"] is not None:
                     for battery in plant["batteries"]:
-                        if battery["batSn"] == self._bat_sn:
-                            self._device_model = battery["batModel"] or None
-                            self._sw_version = battery["bmsSoftwareVersion"] or None
-                            self._hw_version = battery["bmsHardwareVersion"] or None
-                            bms_sn = battery["bmsSn"] or None
+                        if battery.get("batSn") == self._bat_sn:
+                            self._device_model = battery.get("batModel")
+                            self._sw_version = battery.get("bmsSoftwareVersion")
+                            self._hw_version = battery.get("bmsHardwareVersion")
+                            bms_sn = battery.get("bmsSn")
                             break
 
         device_info = DeviceInfo(
@@ -684,12 +774,12 @@ class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
-        self.process_data()
+        _safe_process_data(self)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.process_data()
+        _safe_process_data(self)
         self.async_write_ha_state()
 
     @property
@@ -749,12 +839,12 @@ class ESolarEMS(CoordinatorEntity[ESolarCoordinator], SensorEntity):
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
-        self.process_data()
+        _safe_process_data(self)
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        self.process_data()
+        _safe_process_data(self)
         self.async_write_ha_state()
 
     @property
@@ -1156,13 +1246,20 @@ class ESolarSensorInverterPeakPower(ESolarDevice):
                 else:
                     peak_power = float(0.0)
                 for kit in plant["devices"]:
-                    if (kit['deviceSn'] == self._inverter_sn
-                            and kit['deviceStatisticsData'] is not None
-                            and kit['deviceStatisticsData']['powerNow'] is not None):
-                        peak_power = max(peak_power, float(kit['deviceStatisticsData']['powerNow']))
-                        if self._attr_native_value != float(peak_power):
-                            self._last_updated = datetime.now()
-                            self._attr_native_value = float(peak_power)
+                    if kit.get("deviceSn") != self._inverter_sn:
+                        continue
+                    stats = _kit_stats(kit)
+                    power_now = _first_number(
+                        stats.get("powerNow"),
+                        kit.get("pvPower"),
+                        kit.get("pac"),
+                    )
+                    if power_now is None:
+                        continue
+                    peak_power = max(peak_power, power_now)
+                    if self._attr_native_value != float(peak_power):
+                        self._last_updated = datetime.now()
+                        self._attr_native_value = float(peak_power)
 
 
 class ESolarSensorInverterTodayAlarmNum(ESolarDevice):
@@ -1251,8 +1348,16 @@ class ESolarInverterEnergyTotal(ESolarDevice):
                                 kit["totalEquivalentHours"]) > 0) else None
                         self._attr_extra_state_attributes[MODULE_SIGN] = kit["moduleSignal"] if (
                                 "moduleSignal" in kit and kit["moduleSignal"] is not None) else None
-                        # Setup state
-                        self._attr_native_value = float(kit["deviceStatisticsData"]["totalPvEnergy"])
+                        total_pv = _first_number(
+                            _kit_stats(kit).get("totalPvEnergy"),
+                            kit.get("totalPvEnergy"),
+                            plant.get("totalPvEnergy"),
+                        )
+                        if total_pv is None:
+                            self._attr_available = False
+                            self._attr_native_value = None
+                        else:
+                            self._attr_native_value = total_pv
 
 
 class ESolarInverterEnergyToday(ESolarDevice):
@@ -1284,10 +1389,19 @@ class ESolarInverterEnergyToday(ESolarDevice):
                 continue
             if "devices" in plant and plant["devices"] is not None:
                 for kit in plant["devices"]:
-                    if kit["deviceSn"] != self._inverter_sn:
+                    if kit.get("deviceSn") != self._inverter_sn:
                         continue
-                    # Setup state
-                    self._attr_native_value = float(kit["deviceStatisticsData"]["todayPvEnergy"])
+                    today_pv = _first_number(
+                        _kit_stats(kit).get("todayPvEnergy"),
+                        kit.get("todayPvEnergy"),
+                        plant.get("todayPvEnergy"),
+                    )
+                    if today_pv is None:
+                        self._attr_available = False
+                        self._attr_native_value = None
+                    else:
+                        self._attr_available = True
+                        self._attr_native_value = today_pv
 
 
 class ESolarInverterEnergyMonth(ESolarDevice):
@@ -1319,10 +1433,19 @@ class ESolarInverterEnergyMonth(ESolarDevice):
                 continue
             if "devices" in plant and plant["devices"] is not None:
                 for kit in plant["devices"]:
-                    if kit["deviceSn"] != self._inverter_sn:
+                    if kit.get("deviceSn") != self._inverter_sn:
                         continue
-                    # Setup state
-                    self._attr_native_value = float(kit["deviceStatisticsData"]["monthPvEnergy"])
+                    month_pv = _first_number(
+                        _kit_stats(kit).get("monthPvEnergy"),
+                        kit.get("monthPvEnergy"),
+                        plant.get("monthPvEnergy"),
+                    )
+                    if month_pv is None:
+                        self._attr_available = False
+                        self._attr_native_value = None
+                    else:
+                        self._attr_available = True
+                        self._attr_native_value = month_pv
 
 
 class ESolarInverterPower(ESolarDevice):
@@ -1374,18 +1497,37 @@ class ESolarInverterPower(ESolarDevice):
                 self._attr_available = True
                 if "devices" in plant and plant["devices"] is not None:
                     for kit in plant["devices"]:
-                        if kit["deviceSn"] != self._inverter_sn:
+                        if kit.get("deviceSn") != self._inverter_sn:
                             continue
-                        # Setup state
-                        self._attr_native_value = float(kit["deviceStatisticsData"]["powerNow"])
-                        self._attr_extra_state_attributes[P_DPC] = kit['devicePc']
-                        self._attr_extra_state_attributes[P_DEVICE_TYPE] = kit['deviceType']
-                        self._attr_extra_state_attributes[P_DISPLAY_FW] = kit['displayFw']
-                        self._attr_extra_state_attributes[P_INSTALL_NAME] = kit['installName']
-                        self._attr_extra_state_attributes[P_MASTER_MCU_FW] = kit['masterMCUFw']
-                        self._attr_extra_state_attributes[P_MODULE_FW] = kit['moduleFw']
-                        self._attr_extra_state_attributes[P_MODULE_PC] = kit['modulePc']
-                        self._attr_extra_state_attributes[P_MODULE_SN] = kit['moduleSn']
+                        stats = _kit_stats(kit)
+                        power_now = _first_number(
+                            stats.get("powerNow"),
+                            kit.get("pvPower"),
+                            kit.get("pac"),
+                        )
+                        if power_now is None:
+                            self._attr_available = False
+                            self._attr_native_value = None
+                            continue
+                        self._attr_available = True
+                        self._attr_native_value = power_now
+                        child = (kit.get("children") or [{}])[0] or {}
+                        self._attr_extra_state_attributes[P_DPC] = kit.get("devicePc")
+                        self._attr_extra_state_attributes[P_DEVICE_TYPE] = kit.get("deviceType")
+                        self._attr_extra_state_attributes[P_DISPLAY_FW] = kit.get("displayFw")
+                        self._attr_extra_state_attributes[P_INSTALL_NAME] = kit.get("installName")
+                        self._attr_extra_state_attributes[P_MASTER_MCU_FW] = (
+                            kit.get("masterMCUFw")
+                            or kit.get("masterMcuFw")
+                            or kit.get("masterControlFw")
+                        )
+                        self._attr_extra_state_attributes[P_MODULE_FW] = (
+                            kit.get("moduleFw") or child.get("softwareVersion")
+                        )
+                        self._attr_extra_state_attributes[P_MODULE_PC] = kit.get("modulePc")
+                        self._attr_extra_state_attributes[P_MODULE_SN] = (
+                            kit.get("moduleSn") or child.get("deviceSn")
+                        )
 
 
 class ESolarInverterPV(ESolarDevice):
@@ -1578,14 +1720,24 @@ class ESolarInverterGridPowerWatt(ESolarDevice):
                     for kit in plant["devices"]:
                         if kit["deviceSn"] != self._inverter_sn:
                             continue
-                        grid_power_watt = 0
-                        for s in kit["deviceStatisticsData"]["gridList"]:
-                            if s['gridPowerwatt'] is not None:
-                                grid_power_watt += float(s['gridPowerwatt'])
-                                if "gridName" in s and s["gridName"] is not None:
-                                    if s["gridName"] in [P_GRID_AC1, P_GRID_AC2, P_GRID_AC3]:
-                                        self._attr_extra_state_attributes[ s["gridName"] ] = s['gridPowerwatt']
-                        self._attr_native_value = grid_power_watt
+                        grid_list = _kit_stats(kit).get("gridList") or []
+                        grid_power_watt = 0.0
+                        has_grid = False
+                        for s in grid_list:
+                            if s.get("gridPowerwatt") is None:
+                                continue
+                            has_grid = True
+                            grid_power_watt += float(s["gridPowerwatt"])
+                            if s.get("gridName") in [P_GRID_AC1, P_GRID_AC2, P_GRID_AC3]:
+                                self._attr_extra_state_attributes[s["gridName"]] = s["gridPowerwatt"]
+                        plant_grid = _first_number(plant.get("sysGridPowerwatt"))
+                        if has_grid:
+                            self._attr_native_value = grid_power_watt
+                        elif plant_grid is not None:
+                            self._attr_native_value = plant_grid
+                        else:
+                            self._attr_available = False
+                            self._attr_native_value = None
 
 
 class ESolarInverterGV(ESolarDevice):
@@ -1691,9 +1843,13 @@ class ESolarInverterGC(ESolarDevice):
                     for kit in plant["devices"]:
                         if kit["deviceSn"] != self._inverter_sn:
                             continue
-                        for s in kit["deviceStatisticsData"]["gridList"]:
-                            if s["gridNo"] == self._phase:
+                        grid_list = _kit_stats(kit).get("gridList") or []
+                        for s in grid_list:
+                            if s.get("gridNo") == self._phase and s.get("gridCurr") is not None:
                                 self._attr_native_value = float(s["gridCurr"])
+                                return
+                        self._attr_available = False
+                        self._attr_native_value = None
 
 
 class ESolarInverterTemperature(ESolarDevice):
@@ -2027,23 +2183,149 @@ class ESolarInverterBatterySoC(ESolarDevice):
             self._attr_extra_state_attributes[S_POWER] = plant["solarPower"]
 
 
+_COMM_MODULE_ROLES = frozenset({"aio", "wifi", "sec", "module"})
+_METER_MODULE_ROLES = frozenset({"grid_meter", "pv_meter"})
+_LIVE_MODULE_PROPS = frozenset({
+    "gridPower",
+    "totalLoadPower",
+    "signalStrength",
+    "signalStrengthValue",
+    "volt1",
+    "volt2",
+    "volt3",
+    "curr1",
+    "curr2",
+    "curr3",
+    "power1",
+    "power2",
+    "power3",
+    "freq1",
+    "freq2",
+    "freq3",
+    "powerFactor1",
+    "powerFactor2",
+    "powerFactor3",
+    "impEp",
+    "expEp",
+    "todayImpEp",
+    "todayExpEp",
+})
+
+
+def _create_module_sensors(coordinator, plant, module):
+    """Create status/signal sensors for comm modules and phase sensors for meters."""
+    entities = []
+    plant_name = plant["plantName"]
+    plant_uid = plant["plantUid"]
+    module_sn = module["moduleSn"]
+    module_role = module.get("moduleRole")
+    module_name = module.get("moduleName")
+    device_type = module.get("deviceType")
+
+    def add_prop(prop):
+        entities.append(
+            ESolarSensorModuleEntity(
+                coordinator,
+                plant_name,
+                plant_uid,
+                module_sn,
+                prop,
+                module_role=module_role,
+                module_name=module_name,
+            )
+        )
+
+    add_prop("deviceStatusName")
+    add_prop("updateDate")
+
+    is_comm = device_type == 2 or module_role in _COMM_MODULE_ROLES
+    is_meter = device_type == 4 or module_role in _METER_MODULE_ROLES
+
+    if is_comm:
+        add_prop("signalStrength")
+        add_prop("signalStrengthValue")
+        if module_role == "sec" or module.get("gridPower") is not None:
+            entities.append(
+                ESolarSensorMeterPower(
+                    coordinator,
+                    plant_name,
+                    plant_uid,
+                    module_sn,
+                    module_role=module_role,
+                    module_name=module_name,
+                )
+            )
+        if module_role == "sec" or module.get("totalLoadPower") is not None:
+            add_prop("totalLoadPower")
+
+    if is_meter:
+        entities.append(
+            ESolarSensorMeterPower(
+                coordinator,
+                plant_name,
+                plant_uid,
+                module_sn,
+                module_role=module_role,
+                module_name=module_name,
+            )
+        )
+        for phase in (1, 2, 3):
+            volt = module.get(f"volt{phase}")
+            curr = module.get(f"curr{phase}")
+            active = False
+            try:
+                active = phase == 1 or float(volt or 0) or float(curr or 0)
+            except (TypeError, ValueError):
+                active = phase == 1
+            if not active:
+                continue
+            add_prop(f"volt{phase}")
+            add_prop(f"curr{phase}")
+            add_prop(f"power{phase}")
+            if module.get(f"powerFactor{phase}") is not None:
+                add_prop(f"powerFactor{phase}")
+        add_prop("freq1")
+        add_prop("impEp")
+        add_prop("expEp")
+        add_prop("todayImpEp")
+        add_prop("todayExpEp")
+
+    return entities
+
+
 class ESolarSensorMeterPower(ESolarMeter):
     """Representation of an eSolar sensor for the plant."""
 
-    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid, module_sn ) -> None:
+    def __init__(
+        self,
+        coordinator: ESolarCoordinator,
+        plant_name,
+        plant_uid,
+        module_sn,
+        module_role=None,
+        module_name=None,
+    ) -> None:
         """Initialize the sensor."""
 
         super().__init__(
-            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid, module_sn=module_sn
+            coordinator=coordinator,
+            plant_name=plant_name,
+            plant_uid=plant_uid,
+            module_sn=module_sn,
+            module_role=module_role,
+            module_name=module_name,
         )
 
         self._attr_extra_state_attributes = {}
         self._last_updated: datetime.datetime | None = None
         self._attr_available = False
-        self._attr_unique_id = f"Solar_Meter_{self._module_sn}_grid_power"
+        self._attr_unique_id = f"Solar_Meter_{self._module_key}_grid_power"
 
         self._attr_icon = ICON_POWER
-        self._attr_name = f"Solar Meter {self._module_sn} Grid Power"
+        if self._module_role == "pv_meter":
+            self._attr_name = f"{self._device_name} PV Power"
+        else:
+            self._attr_name = f"{self._device_name} Grid Power"
         self._attr_native_unit_of_measurement = UnitOfPower.WATT
         self._attr_device_class = SensorDeviceClass.POWER
         self._attr_state_class = SensorStateClass.MEASUREMENT
@@ -2057,19 +2339,210 @@ class ESolarSensorMeterPower(ESolarMeter):
                 return
             if "modules" in plant and plant["modules"] is not None:
                 for plant_module in plant["modules"]:
-                    if plant_module['moduleSn'] == self._module_sn and "gridPower" in plant_module and plant_module["gridPower"] is not None:
-                        # Setup static attributes
+                    same_sn = plant_module.get("moduleSn") == self._module_sn
+                    same_role = (plant_module.get("moduleRole") or "meter") == self._module_role
+                    if not (same_sn and same_role):
+                        continue
+                    if plant_module.get("gridPower") is not None:
                         self._attr_available = True
-                        # Setup state
                         self._attr_native_value = float(plant_module["gridPower"])
-
                     copy = plant_module.copy()
                     to_remove = ["deviceSnList", "moduleFw", "moduleModel", "moduleSn", "plantName", "plantUid"]
                     for key in to_remove:
                         if key in copy:
                             del copy[key]
-
                     self._attr_extra_state_attributes = copy
+                    return
+
+
+class ESolarSensorModuleEntity(ESolarMeter):
+    """Representation of a communication-module or meter channel sensor."""
+
+    def __init__(
+        self,
+        coordinator: ESolarCoordinator,
+        plant_name,
+        plant_uid,
+        module_sn,
+        prop,
+        module_role=None,
+        module_name=None,
+    ) -> None:
+        """Initialize the sensor."""
+        super().__init__(
+            coordinator=coordinator,
+            plant_name=plant_name,
+            plant_uid=plant_uid,
+            module_sn=module_sn,
+            module_role=module_role,
+            module_name=module_name,
+        )
+
+        self._attr_extra_state_attributes = {}
+        self._last_updated: datetime.datetime | None = None
+        self._attr_available = False
+        self._property = prop
+        self._attr_unique_id = f"Solar_Meter_{self._module_key}_{prop}"
+        self._attr_native_value = None
+        self._attr_name = f"{self._device_name} {self._module_prop_name(prop)}"
+
+        if prop == "deviceStatusName":
+            self._attr_icon = ICON_STATUS
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == "updateDate":
+            self._attr_icon = ICON_UPDATE
+            self._attr_device_class = SensorDeviceClass.TIMESTAMP
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == "signalStrength":
+            self._attr_icon = ICON_WIFI
+            self._attr_native_unit_of_measurement = SIGNAL_STRENGTH_DECIBELS_MILLIWATT
+            self._attr_device_class = SensorDeviceClass.SIGNAL_STRENGTH
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == "signalStrengthValue":
+            self._attr_icon = ICON_WIFI
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop in {"impEp", "expEp", "todayImpEp", "todayExpEp"}:
+            self._attr_icon = ICON_METER
+            self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+            self._attr_device_class = SensorDeviceClass.ENERGY
+            self._attr_state_class = (
+                SensorStateClass.TOTAL
+                if prop.startswith("today")
+                else SensorStateClass.TOTAL_INCREASING
+            )
+        elif prop.startswith("powerFactor"):
+            self._attr_icon = ICON_TRIANGLE
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+            self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        elif prop == "totalLoadPower" or prop.startswith("power"):
+            self._attr_icon = ICON_POWER
+            self._attr_native_unit_of_measurement = UnitOfPower.WATT
+            self._attr_device_class = SensorDeviceClass.POWER
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif prop.startswith("volt"):
+            self._attr_icon = ICON_LIGHTNING
+            self._attr_native_unit_of_measurement = UnitOfElectricPotential.VOLT
+            self._attr_device_class = SensorDeviceClass.VOLTAGE
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif prop.startswith("curr"):
+            self._attr_icon = ICON_CURRENT_AC
+            self._attr_native_unit_of_measurement = UnitOfElectricCurrent.AMPERE
+            self._attr_device_class = SensorDeviceClass.CURRENT
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+        elif prop.startswith("freq"):
+            self._attr_icon = ICON_UPDATE
+            self._attr_native_unit_of_measurement = UnitOfFrequency.HERTZ
+            self._attr_device_class = SensorDeviceClass.FREQUENCY
+            self._attr_state_class = SensorStateClass.MEASUREMENT
+
+    @staticmethod
+    def _module_prop_name(prop: str) -> str:
+        phase_names = {
+            "volt1": "L1 Voltage",
+            "volt2": "L2 Voltage",
+            "volt3": "L3 Voltage",
+            "curr1": "L1 Current",
+            "curr2": "L2 Current",
+            "curr3": "L3 Current",
+            "power1": "L1 Power",
+            "power2": "L2 Power",
+            "power3": "L3 Power",
+            "freq1": "Frequency",
+            "deviceStatusName": "Status",
+            "updateDate": "Last Update",
+            "signalStrength": "Signal Strength",
+            "signalStrengthValue": "Signal Quality",
+            "totalLoadPower": "Load Power",
+            "impEp": "Import Energy",
+            "expEp": "Export Energy",
+            "todayImpEp": "Today Import Energy",
+            "todayExpEp": "Today Export Energy",
+            "powerFactor1": "L1 Power Factor",
+            "powerFactor2": "L2 Power Factor",
+            "powerFactor3": "L3 Power Factor",
+        }
+        if prop in phase_names:
+            return phase_names[prop]
+        return split_camel_case(prop)
+
+    def _module_value(self, plant_module: dict, plant: dict):
+        if self._property == "deviceStatusName":
+            value = plant_module.get("deviceStatusName") or plant_module.get("moduleStatusName")
+            if value in (None, "", "--"):
+                return None
+            return str(value)
+        if self._property == "signalStrengthValue":
+            value = plant_module.get("signalStrengthValue")
+            if value in (None, "", "--"):
+                return None
+            return str(value)
+        if self._property == "updateDate":
+            timezone = plant.get("timeZone")
+            for key in ("updateDate", "dataUpdateTime", "accessTime"):
+                raw = plant_module.get(key)
+                if raw in (None, ""):
+                    continue
+                parsed = extract_date(str(raw), timezone)
+                if parsed is not None:
+                    return parsed
+            return None
+        if self._property == "freq1":
+            return _first_number(
+                plant_module.get("freq1"),
+                plant_module.get("freq2"),
+                plant_module.get("freq3"),
+            )
+        if self._property == "signalStrength":
+            return _first_number(
+                plant_module.get("signalStrength"),
+                plant_module.get("moduleSignal"),
+            )
+        value = plant_module.get(self._property)
+        if value in (None, "", "--"):
+            return None
+        try:
+            return float(value)
+        except (TypeError, ValueError):
+            return value
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            if self._property in _LIVE_MODULE_PROPS and self._offline_blocks_live_sensor(plant):
+                return
+            for plant_module in plant.get("modules") or []:
+                same_sn = plant_module.get("moduleSn") == self._module_sn
+                same_role = (plant_module.get("moduleRole") or "meter") == self._module_role
+                if not (same_sn and same_role):
+                    continue
+                value = self._module_value(plant_module, plant)
+                if value is not None:
+                    self._attr_available = True
+                    self._attr_native_value = value
+                if self._property == "deviceStatusName":
+                    extras = {}
+                    for key in (
+                        "modulePc",
+                        "hardwareVersion",
+                        "moduleFw",
+                        "boundDeviceSn",
+                        "aliasName",
+                        "ccid",
+                    ):
+                        if plant_module.get(key) not in (None, "", "--"):
+                            extras[key] = plant_module[key]
+                    binds = plant_module.get("moduleBindDeviceDetailList")
+                    if isinstance(binds, list) and binds:
+                        extras["boundDevices"] = [
+                            f"{item.get('deviceModel') or ''} {item.get('sn') or ''}".strip()
+                            for item in binds
+                            if isinstance(item, dict)
+                        ]
+                    if extras:
+                        self._attr_extra_state_attributes = extras
+                return
 
 
 class ESolarSensorBatteryEntity(ESolarBattery):

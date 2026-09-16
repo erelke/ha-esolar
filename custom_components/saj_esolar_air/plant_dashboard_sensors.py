@@ -81,6 +81,10 @@ def _float_value(value: Any) -> float | None:
 
 
 def _first_device(plant: dict) -> dict:
+    for device in plant.get("devices") or []:
+        if device.get("deviceType") == 1 or device.get("type") == 0:
+            if "aio" not in f"{device.get('deviceModel') or ''}".lower():
+                return device
     devices = plant.get("devices") or []
     return devices[0] if devices else {}
 
