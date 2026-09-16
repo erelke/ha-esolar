@@ -138,7 +138,7 @@ def _fetch_esolar_data(
     global WEB_PLANT_DATA
 
     try:
-        session = esolar_web_autenticate(
+        session = esolar_web_authenticate(
             region, username, password, force_login=force_login
         )
         plant_info = None
@@ -216,6 +216,7 @@ def _fetch_esolar_data(
                 _LOGGER.error("We don't have a battery for %s: %s", username, e)
         web_get_batteries_data(region, session, plant_info)
         web_get_device_battery_data(region, session, plant_info)
+        _compat_equivalent_hours(plant_info)
 
         plant_info["status"] = "success"
         plant_info["stamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -488,7 +489,7 @@ def _perform_login(region, session, username, password):
     return _session_from_token_answer(session, username, password, answer)
 
 
-def esolar_web_autenticate(region, username, password, force_login=False):
+def esolar_web_authenticate(region, username, password, force_login=False):
     """Authenticate the user to the SAJ's WEB Portal."""
     if BASIC_TEST:
         return True
@@ -1162,6 +1163,72 @@ def _raw_value(*values):
             continue
         return value
     return None
+
+
+def _float_or_none(value):
+    if value in (None, "", "--"):
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _compat_equivalent_hours(plant_info):
+    """Derive v1 today/total equivalent hours (kWh / kWp) when v2 omits them."""
+    for plant in plant_info.get("plantList") or []:
+        capacity = _float_or_none(
+            _raw_value(
+                plant.get("systemPower"),
+                plant.get("systempower"),
+                plant.get("capacity"),
+            )
+        )
+        today_energy = _float_or_none(
+            _raw_value(plant.get("todayPvEnergy"), plant.get("todayElectricity"))
+        )
+        total_energy = _float_or_none(
+            _raw_value(plant.get("totalPvEnergy"), plant.get("totalElectricity"))
+        )
+        if not capacity or capacity <= 0:
+            continue
+        if _float_or_none(plant.get("todayEquivalentHours")) is None and today_energy is not None:
+            plant["todayEquivalentHours"] = round(today_energy / capacity, 2)
+        if _float_or_none(plant.get("totalEquivalentHours")) is None and total_energy is not None:
+            plant["totalEquivalentHours"] = round(total_energy / capacity, 2)
+        for device in plant.get("devices") or []:
+            if not _is_inverter_device(device):
+                continue
+            stats = device.get("deviceStatisticsData")
+            if not isinstance(stats, dict):
+                stats = {}
+            if _float_or_none(device.get("todayEquivalentHours")) is None:
+                device_today = _float_or_none(
+                    _raw_value(
+                        device.get("todayPvEnergy"),
+                        stats.get("todayPvEnergy"),
+                    )
+                )
+                if device_today is not None:
+                    device["todayEquivalentHours"] = round(device_today / capacity, 2)
+                elif plant.get("todayEquivalentHours") is not None:
+                    device["todayEquivalentHours"] = plant["todayEquivalentHours"]
+            if _float_or_none(device.get("totalEquivalentHours")) is None:
+                device_total = _float_or_none(
+                    _raw_value(
+                        device.get("totalPvEnergy"),
+                        stats.get("totalPvEnergy"),
+                    )
+                )
+                if device_total is not None:
+                    device["totalEquivalentHours"] = round(device_total / capacity, 2)
+                elif plant.get("totalEquivalentHours") is not None:
+                    device["totalEquivalentHours"] = plant["totalEquivalentHours"]
+            if device.get("todayEquivalentHours") is not None:
+                stats["todayEquivalentHours"] = device["todayEquivalentHours"]
+            if device.get("totalEquivalentHours") is not None:
+                stats["totalEquivalentHours"] = device["totalEquivalentHours"]
+            device["deviceStatisticsData"] = stats
 
 
 def _compat_raw_statistics(device, raw_data):

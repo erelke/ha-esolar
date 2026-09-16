@@ -28,7 +28,7 @@ from .const import (
 )
 from .esolar import (
     clear_user_tokens,
-    esolar_web_autenticate,
+    esolar_web_authenticate,
     SessionAuthError,
     web_get_plant,
 )
@@ -68,7 +68,7 @@ class ESolarHub:
                 try:
                     if attempt > 0:
                         clear_user_tokens(username, password)
-                    session = esolar_web_autenticate(
+                    session = esolar_web_authenticate(
                         region,
                         username,
                         password,

@@ -3,7 +3,7 @@ import sys
 
 sys.path.insert(0, "/mnt/e/ha-esolar/custom_components")
 
-from saj_esolar_air.esolar import _post_v2, esolar_web_autenticate
+from saj_esolar_air.esolar import _post_v2, esolar_web_authenticate
 
 ENTRIES = "/home/homeassistant/.homeassistant/.storage/core.config_entries"
 
@@ -37,7 +37,7 @@ def try_post(session, region, path, payload):
 
 entry = load_martin()
 cfg = entry["data"]
-session = esolar_web_autenticate(cfg.get("region", "eu"), cfg["username"], cfg["password"])
+session = esolar_web_authenticate(cfg.get("region", "eu"), cfg["username"], cfg["password"])
 region = cfg.get("region", "eu")
 h2 = "H2S2602J2417E01068"
 aio = "M5380J2335032716"

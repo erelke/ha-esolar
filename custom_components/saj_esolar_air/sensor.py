@@ -1206,10 +1206,18 @@ class ESolarSensorPlantTodayEquivalentHours(ESolarPlant):
                     self._attr_native_value = float(plant["todayEquivalentHours"])
                 else:
                     total_hours = 0.0
-                    for device in plant["devices"]:
+                    for device in plant.get("devices") or []:
                         if "todayEquivalentHours" in device and device["todayEquivalentHours"] is not None and float(device["todayEquivalentHours"]) > 0.0:
                             total_hours += float(device["todayEquivalentHours"])
-                    self._attr_native_value = total_hours
+                    if total_hours > 0.0:
+                        self._attr_native_value = total_hours
+                    else:
+                        capacity = _first_number(plant.get("systemPower"), plant.get("systempower"))
+                        energy = _first_number(plant.get("todayPvEnergy"), plant.get("todayElectricity"))
+                        if capacity and capacity > 0 and energy is not None:
+                            self._attr_native_value = round(energy / capacity, 2)
+                        else:
+                            self._attr_native_value = 0.0
 
 
 class ESolarSensorInverterPeakPower(ESolarDevice):

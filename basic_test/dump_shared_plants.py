@@ -11,7 +11,7 @@ from saj_esolar_air.esolar import (  # noqa: E402
     _post_v2,
     base_url,
     calc_signature,
-    esolar_web_autenticate,
+    esolar_web_authenticate,
     generatkey,
     get_esolar_data,
 )
@@ -211,7 +211,7 @@ def main():
         )
         print(json.dumps(slim, indent=2, ensure_ascii=False)[:4000])
 
-        session = esolar_web_autenticate(
+        session = esolar_web_authenticate(
             cfg.get("region", "eu"), cfg["username"], cfg["password"]
         )
         extra = {}

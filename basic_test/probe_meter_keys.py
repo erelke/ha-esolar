@@ -2,7 +2,7 @@ import json
 import sys
 
 sys.path.insert(0, "/mnt/e/ha-esolar/custom_components")
-from saj_esolar_air.esolar import _post_v2, esolar_web_autenticate
+from saj_esolar_air.esolar import _post_v2, esolar_web_authenticate
 
 ENTRIES = "/home/homeassistant/.homeassistant/.storage/core.config_entries"
 h2 = "H2S2602J2417E01068"
@@ -19,7 +19,7 @@ else:
     raise SystemExit("martin not found")
 
 region = cfg.get("region", "eu")
-session = esolar_web_autenticate(region, cfg["username"], cfg["password"])
+session = esolar_web_authenticate(region, cfg["username"], cfg["password"])
 
 paths = [
     ("/monitor/module/baseModuleDetail", {"moduleSn": aio}),
