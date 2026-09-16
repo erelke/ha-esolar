@@ -81,12 +81,20 @@ def _float_value(value: Any) -> float | None:
 
 
 def _first_device(plant: dict) -> dict:
-    for device in plant.get("devices") or []:
-        if device.get("deviceType") == 1 or device.get("type") == 0:
-            if "aio" not in f"{device.get('deviceModel') or ''}".lower():
-                return device
-    devices = plant.get("devices") or []
-    return devices[0] if devices else {}
+    devices = [device for device in (plant.get("devices") or []) if isinstance(device, dict)]
+    if not devices:
+        return {}
+
+    def score(device):
+        model = f"{device.get('deviceModel') or ''} {device.get('deviceName') or ''}".lower()
+        if "aio" in model:
+            return -10
+        is_inverter = device.get("deviceType") in (1, "1") or device.get("type") in (0, 1)
+        online = 0 if device.get("deviceStatus") in (3, "3") else 2
+        storage = 1 if device.get("type") == 1 or device.get("hasBattery") == 1 else 0
+        return (2 if is_inverter else 0) + online + storage
+
+    return max(devices, key=score)
 
 
 def _battery_info(plant: dict) -> dict:
@@ -107,6 +115,9 @@ def _battery_info(plant: dict) -> dict:
     ):
         if key in device and device[key] is not None:
             merged.setdefault(key, device[key])
+        plant_val = plant.get(key)
+        if plant_val not in (None, ""):
+            merged[key] = plant_val
     if plant.get("batteries"):
         bat = plant["batteries"][0]
         for key in bat:
@@ -332,7 +343,9 @@ class ESolarPlantLoadPowerSensor(ESolarPlantDashboardSensor):
             power = _float_value(plant.get("totalLoadPowerwatt"))
             if power is None:
                 stats = _first_device(plant).get("deviceStatisticsData") or {}
-                power = _float_value(stats.get("totalLoadPowerWatt"))
+                power = _float_value(
+                    stats.get("totalLoadPowerwatt") or stats.get("totalLoadPowerWatt")
+                )
             if power is None:
                 self._attr_available = False
                 return
@@ -358,6 +371,8 @@ class ESolarPlantSelfUseRateSensor(ESolarPlantDashboardSensor):
             rate = _float_value(plant.get("selfUseRate"))
             if rate is None:
                 rate = _float_value(plant.get("selfUsePercent"))
+            if rate is None:
+                rate = _float_value(plant.get("selfUsePercentage"))
             if rate is None:
                 self._attr_available = False
                 return
@@ -391,6 +406,39 @@ class ESolarPlantUsableBatteryCapacitySensor(ESolarPlantDashboardSensor):
                 info.get("usableBatCapacity")
                 or plant.get("usableBatCapacity")
             )
+            if capacity is None:
+                packs = plant.get("batteries") or []
+                total = 0.0
+                counted = False
+                for battery in packs:
+                    soc = _float_value(battery.get("batSoc"))
+                    model = str(battery.get("batModel") or "")
+                    tokens = "".join(
+                        ch if ch.isdigit() or ch == "." else " " for ch in model
+                    ).split()
+                    kwh = _float_value(
+                        battery.get("batCapacity") or battery.get("batCapcity")
+                    )
+                    if kwh is None or kwh > 30:
+                        kwh = None
+                        for token in tokens:
+                            if "." not in token:
+                                continue
+                            value = _float_value(token)
+                            if value is not None and 0.5 <= value <= 30:
+                                kwh = value
+                                break
+                        if kwh is None:
+                            for token in tokens:
+                                value = _float_value(token)
+                                if value is not None and 3 <= value <= 30:
+                                    kwh = value
+                                    break
+                    if kwh and soc is not None:
+                        total += kwh * soc / 100.0
+                        counted = True
+                if counted:
+                    capacity = round(total, 2)
             if capacity is None:
                 self._attr_available = False
                 return
@@ -568,17 +616,37 @@ class ESolarPlantInverterStatusSensor(ESolarPlantDashboardSensor):
         for plant in self._plant_list():
             if plant["plantName"] != self._plant_name:
                 continue
+            preferred = _first_device(plant)
             status = plant.get("deviceStatus")
             if status is None:
-                running = plant.get("runningState")
-                if running is not None:
-                    status = running
-                else:
-                    self._attr_available = False
-                    return
+                status = preferred.get("deviceStatus")
             try:
-                status_int = int(status)
+                status_int = int(status) if status is not None else None
             except (TypeError, ValueError):
+                status_int = None
+            if status_int not in INVERTER_STATUS_KEYS:
+                name = str(
+                    plant.get("runningStateName")
+                    or preferred.get("deviceStatusName")
+                    or ""
+                ).strip().lower()
+                mapped = {
+                    "normal": "normal",
+                    "alarm": "alarm",
+                    "offline": "offline",
+                    "fault": "alarm",
+                }.get(name)
+                if mapped:
+                    self._attr_available = True
+                    self._attr_native_value = mapped
+                    self._attr_extra_state_attributes = {}
+                    return
+                running = plant.get("runningState")
+                try:
+                    status_int = int(running) if running is not None else None
+                except (TypeError, ValueError):
+                    status_int = None
+            if status_int not in INVERTER_STATUS_KEYS:
                 self._attr_available = False
                 return
             self._attr_available = True

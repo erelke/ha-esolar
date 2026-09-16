@@ -5,6 +5,7 @@ import logging
 import json
 import hashlib
 import os
+import re
 import uuid
 import requests
 from dateutil.relativedelta import relativedelta
@@ -181,12 +182,12 @@ def _fetch_esolar_data(
 
         web_get_plant_details(region, session, plant_info)
         web_get_device_list(region, session, plant_info)
+        _ensure_inverter_devices(plant_info)
         web_get_sec_statistics(region, session, plant_info)
         web_get_module_details(region, session, plant_info)
         web_get_meter_details(region, session, plant_info)
         web_get_plant_statistics(region, session, plant_info)
         web_get_plant_overview(region, session, plant_info)
-        _ensure_inverter_devices(plant_info)
         web_get_device_info(region, session, plant_info)
         web_get_plant_flow_data(region, session, plant_info)
         web_get_device_raw_data(region, session, plant_info)
@@ -217,6 +218,7 @@ def _fetch_esolar_data(
         web_get_batteries_data(region, session, plant_info)
         web_get_device_battery_data(region, session, plant_info)
         _compat_equivalent_hours(plant_info)
+        _compat_dashboard_fields(plant_info)
 
         plant_info["status"] = "success"
         plant_info["stamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -711,12 +713,7 @@ def web_get_plant_statistics(region, session, plant_info):
         if plant.get("type") == 2:
             continue
 
-        device_sn = None
-
-        if plant.get("deviceSn"):
-            device_sn = plant.get("deviceSn")
-        elif plant.get("deviceSnList"):
-            device_sn = plant["deviceSnList"][0]
+        device_sn = _plant_query_sn(plant)
 
         if not device_sn:
             _LOGGER.debug(
@@ -747,6 +744,17 @@ def web_get_plant_statistics(region, session, plant_info):
             continue
 
         _merge_plant_payload(plant, stats_data)
+
+        if plant.get("peakPower") in (None, ""):
+            peaks = []
+            for item in stats_data.get("peakList") or []:
+                if not isinstance(item, dict):
+                    continue
+                peak = _float_or_none(item.get("peakPower"))
+                if peak is not None:
+                    peaks.append(peak)
+            if peaks:
+                plant["peakPower"] = max(peaks)
 
         # Environmental totals returned by Elekeeper v2.
         for item in stats_data.get("environmentalInformation", []) or []:
@@ -988,6 +996,42 @@ def _is_inverter_device(device):
     )
 
 
+def _inverter_is_offline(device):
+    status = device.get("deviceStatus")
+    return status in (3, "3")
+
+
+def _preferred_inverter_sn(plant):
+    """Pick an online storage inverter for plant-level v2 queries.
+
+    Multi-inverter plants (e.g. Martin: offline R5 + live H2) must not query
+    the first serial in listForWeb; energy-flow battery/SOC data lives on H2.
+    """
+    devices = [
+        device
+        for device in (plant.get("devices") or [])
+        if _is_inverter_device(device) and device.get("deviceSn")
+    ]
+    if not devices:
+        return (
+            plant.get("deviceSn")
+            or plant.get("sn")
+            or (plant.get("deviceSnList") or [None])[0]
+        )
+
+    def score(device):
+        online = 0 if _inverter_is_offline(device) else 2
+        storage = 1 if device.get("type") == 1 or device.get("hasBattery") == 1 else 0
+        return online + storage
+
+    return max(devices, key=score).get("deviceSn")
+
+
+def _plant_query_sn(plant):
+    """Serial used for plant-level Elekeeper calls."""
+    return _preferred_inverter_sn(plant)
+
+
 def _walk_device_nodes(devices, parent=None):
     """Yield (node, parent_sn) for every node in a listForWeb tree."""
     parent_sn = _alias_device_sn(parent) if parent else None
@@ -1168,6 +1212,10 @@ def _raw_value(*values):
 def _float_or_none(value):
     if value in (None, "", "--"):
         return None
+    if isinstance(value, str):
+        value = value.strip().rstrip("%").replace(",", ".")
+        if not value or value in ("--", "N/A"):
+            return None
     try:
         return float(value)
     except (TypeError, ValueError):
@@ -1229,6 +1277,124 @@ def _compat_equivalent_hours(plant_info):
             if device.get("totalEquivalentHours") is not None:
                 stats["totalEquivalentHours"] = device["totalEquivalentHours"]
             device["deviceStatisticsData"] = stats
+
+
+def _battery_pack_kwh(battery):
+    """Best-effort kWh from models like BU2-5.0-HV5."""
+    capacity = _float_or_none(
+        battery.get("batCapacity") or battery.get("batCapcity") or battery.get("capacity")
+    )
+    if capacity is not None and 0.5 <= capacity <= 30:
+        return capacity
+    model = str(battery.get("batModel") or battery.get("deviceModel") or "").replace(",", ".")
+    decimals = [float(token) for token in re.findall(r"\d+\.\d+", model)]
+    for value in decimals:
+        if 0.5 <= value <= 30:
+            return value
+    for value in (float(token) for token in re.findall(r"\d+", model)):
+        if 3 <= value <= 30:
+            return value
+    return None
+
+
+def _compat_dashboard_fields(plant_info):
+    """Fill v1 dashboard fields from v2 energy-flow, inverter status and packs."""
+    for plant in plant_info.get("plantList") or []:
+        preferred_sn = _preferred_inverter_sn(plant)
+        preferred = None
+        for device in plant.get("devices") or []:
+            if device.get("deviceSn") == preferred_sn:
+                preferred = device
+                break
+
+        pref_status = None
+        if preferred is not None:
+            pref_status = _float_or_none(preferred.get("deviceStatus"))
+            if pref_status is not None:
+                pref_status = int(pref_status)
+            plant_status = _float_or_none(plant.get("deviceStatus"))
+            if plant_status is not None:
+                plant_status = int(plant_status)
+            # v2 energy-flow uses runningState=6 for Normal; v1 sensors want 1/2/3.
+            if plant_status not in (1, 2, 3) and pref_status in (1, 2, 3):
+                plant["deviceStatus"] = pref_status
+            if not plant.get("deviceStatusName"):
+                plant["deviceStatusName"] = preferred.get("deviceStatusName")
+
+        percent = _float_or_none(plant.get("batEnergyPercent"))
+        pack_socs = []
+        pack_kwh_total = 0.0
+        pack_energy = 0.0
+        for battery in plant.get("batteries") or []:
+            soc = _float_or_none(battery.get("batSoc"))
+            if soc is not None:
+                pack_socs.append(soc)
+            kwh = _battery_pack_kwh(battery)
+            if kwh:
+                pack_kwh_total += kwh
+                if soc is not None:
+                    pack_energy += kwh * soc / 100.0
+
+        if (percent is None or percent <= 0) and pack_socs:
+            plant["batEnergyPercent"] = round(sum(pack_socs) / len(pack_socs), 1)
+            percent = plant["batEnergyPercent"]
+
+        if plant.get("usableBatCapacity") in (None, "", 0, 0.0):
+            if pack_energy > 0:
+                plant["usableBatCapacity"] = round(pack_energy, 2)
+            elif pack_kwh_total > 0 and percent is not None:
+                plant["usableBatCapacity"] = round(pack_kwh_total * percent / 100.0, 2)
+
+        if plant.get("selfUseRate") in (None, ""):
+            plant["selfUseRate"] = _raw_value(
+                plant.get("selfUsePercent"),
+                plant.get("selfUsePercentage"),
+            )
+
+        if plant.get("batteryWorkTime") in (None, "", 0, 0.0):
+            bat_power = abs(_float_or_none(plant.get("batPower")) or 0.0)
+            usable = _float_or_none(plant.get("usableBatCapacity"))
+            direction = _float_or_none(plant.get("batteryDirection"))
+            if bat_power > 0 and usable is not None:
+                if direction == 1:
+                    plant["batteryWorkTime"] = round(usable / (bat_power / 1000.0) * 60.0, 0)
+                elif direction == -1 and pack_kwh_total > usable:
+                    plant["batteryWorkTime"] = round(
+                        (pack_kwh_total - usable) / (bat_power / 1000.0) * 60.0, 0
+                    )
+
+        if plant.get("batteries"):
+            plant["hasBattery"] = 1
+
+        if preferred is not None:
+            stats = preferred.get("deviceStatisticsData")
+            if not isinstance(stats, dict):
+                stats = {}
+            for key in (
+                "batEnergyPercent",
+                "batPower",
+                "userModeName",
+                "usableBatCapacity",
+                "batteryWorkTime",
+                "totalLoadPowerwatt",
+                "sysGridPowerwatt",
+                "batteryDirection",
+                "gridDirection",
+                "selfUseRate",
+            ):
+                value = plant.get(key)
+                if value in (None, ""):
+                    continue
+                existing = stats.get(key)
+                if existing in (None, "", 0, 0.0):
+                    stats[key] = value
+                    preferred[key] = value
+                else:
+                    stats.setdefault(key, value)
+                    preferred.setdefault(key, value)
+            if plant.get("hasBattery") == 1:
+                preferred["hasBattery"] = 1
+            preferred["deviceStatisticsData"] = stats
 
 
 def _compat_raw_statistics(device, raw_data):
@@ -1763,12 +1929,7 @@ def web_get_plant_overview(region, session, plant_info):
         ):
             continue
 
-        device_sn = None
-
-        if plant.get("deviceSn"):
-            device_sn = plant.get("deviceSn")
-        elif plant.get("deviceSnList"):
-            device_sn = plant["deviceSnList"][0]
+        device_sn = _plant_query_sn(plant)
 
         if not device_sn:
             continue
@@ -1808,12 +1969,7 @@ def web_get_plant_flow_data(region, session, plant_info):
         raise ValueError("Missing session identifier trying to obtain flow data")
 
     for plant in plant_info["plantList"]:
-        device_sn = None
-
-        if plant.get("deviceSn"):
-            device_sn = plant.get("deviceSn")
-        elif plant.get("deviceSnList"):
-            device_sn = plant["deviceSnList"][0]
+        device_sn = _plant_query_sn(plant)
 
         if not device_sn:
             continue

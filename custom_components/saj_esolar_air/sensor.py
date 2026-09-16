@@ -1129,13 +1129,54 @@ class ESolarSensorPlantPeakPower(ESolarPlant):
                 if self._offline_blocks_live_sensor(plant):
                     return
                 # Setup static attributes
-                peak_power = plant.get("peakPower")
-                if peak_power is None:
+                api_peak = plant.get("peakPower")
+                live = []
+                for value in (
+                    plant.get("nowPower"),
+                    plant.get("powerNow"),
+                    plant.get("totalPvPower"),
+                ):
+                    if value not in (None, "", "--"):
+                        try:
+                            live.append(float(value))
+                        except (TypeError, ValueError):
+                            pass
+                for device in plant.get("devices") or []:
+                    stats = device.get("deviceStatisticsData") or {}
+                    for value in (
+                        stats.get("powerNow"),
+                        device.get("pvPower"),
+                        stats.get("peakPower"),
+                        device.get("peakPower"),
+                    ):
+                        if value not in (None, "", "--"):
+                            try:
+                                live.append(float(value))
+                            except (TypeError, ValueError):
+                                pass
+                live_max = max(live) if live else None
+                today = datetime.now().date()
+                session_peak = (
+                    self._attr_native_value
+                    if self._last_updated is not None
+                    and self._last_updated.date() == today
+                    else None
+                )
+                candidates = []
+                if api_peak not in (None, "", "--"):
+                    candidates.append(float(api_peak))
+                if live_max not in (None, "", "--") and float(live_max) > 0:
+                    candidates.append(float(live_max))
+                if session_peak not in (None, "", "--"):
+                    candidates.append(float(session_peak))
+                if not candidates:
                     self._attr_available = False
                     self._attr_native_value = None
                 else:
+                    peak_power = max(candidates)
                     self._attr_available = True
-                    self._attr_native_value = float(peak_power)
+                    self._attr_native_value = peak_power
+                    self._last_updated = datetime.now()
 
 
 class ESolarSensorPlantLastUploadTime(ESolarPlant):
@@ -1987,7 +2028,20 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
 
             # Setup state
             has_soc = False
-            for kit in plant["devices"]:
+            plant_pct = None
+            try:
+                raw_pct = plant.get("batEnergyPercent")
+                if raw_pct is not None:
+                    plant_pct = float(str(raw_pct).replace("%", ""))
+            except (TypeError, ValueError):
+                plant_pct = None
+            if plant_pct is not None:
+                self._attr_native_value = plant_pct
+                has_soc = True
+
+            for kit in plant.get("devices") or []:
+                if has_soc:
+                    break
                 if "deviceStatisticsData" not in kit:
                     continue
 
@@ -2006,9 +2060,21 @@ class ESolarSensorPlantBatterySoC(ESolarPlant):
                     has_soc = True
                     available += bat_capacity * float(bat_pct)
 
-            if installed > 0 and has_soc:
+            if not has_soc:
+                pack_socs = []
+                for battery in plant.get("batteries") or []:
+                    try:
+                        soc = float(str(battery.get("batSoc") or "").replace("%", ""))
+                    except (TypeError, ValueError):
+                        continue
+                    pack_socs.append(soc)
+                if pack_socs:
+                    self._attr_native_value = round(sum(pack_socs) / len(pack_socs), 1)
+                    has_soc = True
+
+            if has_soc and self._attr_native_value is None and installed > 0:
                 self._attr_native_value = float(available / installed)
-            elif installed > 0:
+            elif not has_soc:
                 self._attr_available = False
 
             if "gridDirection" in plant and plant["gridDirection"] is not None:
@@ -2097,30 +2163,32 @@ class ESolarInverterBatterySoC(ESolarDevice):
                 continue
             for kit in plant["devices"]:
                 if kit["deviceSn"] == self._inverter_sn:
-                    stats = kit["deviceStatisticsData"]
+                    stats = kit.get("deviceStatisticsData") or {}
                     bat_pct = stats.get("batEnergyPercent")
                     if bat_pct is None:
                         self._attr_available = False
                         return
                     self._attr_native_value = float(bat_pct)
 
-                    self._attr_extra_state_attributes[I_MODEL] = kit["deviceType"]
-                    self._attr_extra_state_attributes[I_SN] = kit["deviceSn"]
-                    self._attr_extra_state_attributes[B_CAPACITY] = kit["deviceStatisticsData"]["batCapcity"]
-                    self._attr_extra_state_attributes[B_CURRENT] = kit["deviceStatisticsData"]["batCurrent"]
-                    self._attr_extra_state_attributes[B_POWER] = kit["deviceStatisticsData"]["batPower"]
-                    self._attr_extra_state_attributes[B_T_LOAD] = kit["deviceStatisticsData"]["totalLoadPowerwatt"]
-                    self._attr_extra_state_attributes[B_TODAY_CHARGE_E] = float(
-                        kit["deviceStatisticsData"]["todayBatChgEnergy"]) * 1000
-                    self._attr_extra_state_attributes[B_TODAY_DISCHARGE_E] = float(
-                        kit["deviceStatisticsData"]["todayBatDisEnergy"]) * 1000
-                    self._attr_extra_state_attributes[B_TOTAL_CHARGE_E] = float(
-                        kit["deviceStatisticsData"]["totalBatChgEnergy"]) * 1000
-                    self._attr_extra_state_attributes[B_TOTAL_DISCHARGE_E] = float(
-                        kit["deviceStatisticsData"]["totalBatDisEnergy"]) * 1000
+                    self._attr_extra_state_attributes[I_MODEL] = kit.get("deviceType")
+                    self._attr_extra_state_attributes[I_SN] = kit.get("deviceSn")
+                    self._attr_extra_state_attributes[B_CAPACITY] = stats.get("batCapcity")
+                    self._attr_extra_state_attributes[B_CURRENT] = stats.get("batCurrent")
+                    self._attr_extra_state_attributes[B_POWER] = stats.get("batPower")
+                    self._attr_extra_state_attributes[B_T_LOAD] = stats.get("totalLoadPowerwatt")
+                    for dest, src in (
+                        (B_TODAY_CHARGE_E, "todayBatChgEnergy"),
+                        (B_TODAY_DISCHARGE_E, "todayBatDisEnergy"),
+                        (B_TOTAL_CHARGE_E, "totalBatChgEnergy"),
+                        (B_TOTAL_DISCHARGE_E, "totalBatDisEnergy"),
+                    ):
+                        raw = stats.get(src)
+                        self._attr_extra_state_attributes[dest] = (
+                            float(raw) * 1000 if raw is not None else None
+                        )
                     # self._attr_extra_state_attributes[B_H_LOAD] = plant["homeLoadPower"] # ???
-                    if "backupTotalLoadPowerWatt" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["backupTotalLoadPowerWatt"] is not None:
-                        self._attr_extra_state_attributes[B_B_LOAD] = kit["deviceStatisticsData"]["backupTotalLoadPowerWatt"]
+                    if "backupTotalLoadPowerWatt" in stats and stats["backupTotalLoadPowerWatt"] is not None:
+                        self._attr_extra_state_attributes[B_B_LOAD] = stats["backupTotalLoadPowerWatt"]
                     elif "backupTotalLoadPowerWatt" in kit and kit["backupTotalLoadPowerWatt"] is not None:
                         self._attr_extra_state_attributes[B_B_LOAD] = kit["backupTotalLoadPowerWatt"]
                     else:
@@ -2138,12 +2206,13 @@ class ESolarInverterBatterySoC(ESolarDevice):
                     else:
                         self._attr_extra_state_attributes[B_DIRECTION] = P_UNKNOWN
 
-                    if "gridDirection" in kit["deviceStatisticsData"] and kit["deviceStatisticsData"]["gridDirection"] is not None:
-                        if kit["deviceStatisticsData"]["gridDirection"] == 1:
+                    grid_dir = stats.get("gridDirection")
+                    if grid_dir is not None:
+                        if grid_dir == 1:
                             self._attr_extra_state_attributes[B_GRID_DIRECT] = B_EXPORT
-                        elif kit["deviceStatisticsData"]["gridDirection"] == -1:
+                        elif grid_dir == -1:
                             self._attr_extra_state_attributes[B_GRID_DIRECT] = B_IMPORT
-                        elif kit["deviceStatisticsData"]["gridDirection"] == 0:
+                        elif grid_dir == 0:
                             self._attr_extra_state_attributes[B_GRID_DIRECT] = B_DIR_STB
                         else:
                             self._attr_extra_state_attributes[B_GRID_DIRECT] = P_UNKNOWN
@@ -2176,7 +2245,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
             else:
                 self._attr_extra_state_attributes[IO_DIRECTION] = P_UNKNOWN
 
-            self._attr_extra_state_attributes[PV_POWER] = plant["totalPvPower"]
+            self._attr_extra_state_attributes[PV_POWER] = plant.get("totalPvPower")
 
             if "pvDirection" in plant and plant["pvDirection"] is not None:
                 if plant["pvDirection"] == 1:
@@ -2188,7 +2257,7 @@ class ESolarInverterBatterySoC(ESolarDevice):
             else:
                 self._attr_extra_state_attributes[PV_DIRECTION] = P_UNKNOWN
 
-            self._attr_extra_state_attributes[S_POWER] = plant["solarPower"]
+            self._attr_extra_state_attributes[S_POWER] = plant.get("solarPower")
 
 
 _COMM_MODULE_ROLES = frozenset({"aio", "wifi", "sec", "module"})
