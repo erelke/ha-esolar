@@ -162,6 +162,36 @@
           "offline": "Hors ligne",
           "unknown": "Inconnu"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Charbon économisé aujourd'hui"
+      },
+      "plant_backup_power": {
+        "name": "Puissance de secours"
+      },
+      "plant_generator_power": {
+        "name": "Puissance générateur"
+      },
+      "plant_generator_direction": {
+        "name": "Direction générateur",
+        "state": {
+          "importing": "Import",
+          "standby": "Veille",
+          "exporting": "Export",
+          "unknown": "Inconnu"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Puissance chargeur"
+      },
+      "plant_charger_direction": {
+        "name": "Direction chargeur",
+        "state": {
+          "charging": "Charge",
+          "idle": "Inactif",
+          "discharging": "Décharge",
+          "unknown": "Inconnu"
+        }
       }
     }
   }

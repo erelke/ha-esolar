@@ -154,6 +154,36 @@
       "plant_daily_co2": {
         "name": "Mai CO₂ csökkentés"
       },
+      "plant_daily_coal": {
+        "name": "Mai szénmegtakarítás"
+      },
+      "plant_backup_power": {
+        "name": "Backup teljesítmény"
+      },
+      "plant_generator_power": {
+        "name": "Generátor teljesítmény"
+      },
+      "plant_generator_direction": {
+        "name": "Generátor irány",
+        "state": {
+          "importing": "Import",
+          "standby": "Készenlét",
+          "exporting": "Export",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Töltő teljesítmény"
+      },
+      "plant_charger_direction": {
+        "name": "Töltő irány",
+        "state": {
+          "charging": "Töltés",
+          "idle": "Tétlen",
+          "discharging": "Merítés",
+          "unknown": "Ismeretlen"
+        }
+      },
       "plant_inverter_status": {
         "name": "Inverter státusz",
         "state": {

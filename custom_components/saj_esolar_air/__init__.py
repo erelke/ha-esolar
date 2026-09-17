@@ -22,15 +22,27 @@ _LOGGER = logging.getLogger(__name__)
 PLATFORMS: list[Platform] = [Platform.SENSOR]
 
 
+def _plant_update_interval(entry: ConfigEntry) -> timedelta:
+    """Return the configured API poll interval, defaulting to 10 minutes."""
+    value = entry.options.get(CONF_PLANT_UPDATE_INTERVAL)
+    if value is None:
+        value = entry.data.get(CONF_PLANT_UPDATE_INTERVAL, CONF_UPDATE_INTERVAL)
+    try:
+        minutes = int(value)
+    except (TypeError, ValueError):
+        minutes = CONF_UPDATE_INTERVAL
+    return timedelta(minutes=max(1, minutes))
+
+
 class ESolarResponse(TypedDict, total=False):
     """API response."""
     plantList: list[dict]
     status: str
     unavailablePlants: list[str]
 
-async def update_listener(hass, entry):
-    """Handle options update."""
-    _LOGGER.debug(entry.options)
+async def update_listener(hass: HomeAssistant, entry: ConfigEntry) -> None:
+    """Reload when options change so the update interval takes effect."""
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_migrate_entry(hass, entry):
@@ -85,7 +97,11 @@ class ESolarCoordinator(DataUpdateCoordinator[ESolarResponse]):
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         """Initialize the coordinator."""
-        update_interval = timedelta(minutes=(entry.options.get(CONF_PLANT_UPDATE_INTERVAL) or CONF_UPDATE_INTERVAL))
+        update_interval = _plant_update_interval(entry)
+        _LOGGER.debug(
+            "SAJ Elekeeper coordinator interval is %s",
+            update_interval,
+        )
         super().__init__(
             hass,
             _LOGGER,

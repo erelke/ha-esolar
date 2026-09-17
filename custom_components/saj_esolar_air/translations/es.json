@@ -162,6 +162,36 @@
           "offline": "Desconectado",
           "unknown": "Desconocido"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Carbón ahorrado hoy"
+      },
+      "plant_backup_power": {
+        "name": "Potencia de respaldo"
+      },
+      "plant_generator_power": {
+        "name": "Potencia del generador"
+      },
+      "plant_generator_direction": {
+        "name": "Dirección del generador",
+        "state": {
+          "importing": "Importación",
+          "standby": "En espera",
+          "exporting": "Exportación",
+          "unknown": "Desconocido"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Potencia del cargador"
+      },
+      "plant_charger_direction": {
+        "name": "Dirección del cargador",
+        "state": {
+          "charging": "Cargando",
+          "idle": "Inactivo",
+          "discharging": "Descargando",
+          "unknown": "Desconocido"
+        }
       }
     }
   }

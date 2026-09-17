@@ -162,6 +162,36 @@
           "offline": "Offline",
           "unknown": "Nepoznato"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Ušteđeni ugalj danas"
+      },
+      "plant_backup_power": {
+        "name": "Rezervna snaga"
+      },
+      "plant_generator_power": {
+        "name": "Snaga generatora"
+      },
+      "plant_generator_direction": {
+        "name": "Smer generatora",
+        "state": {
+          "importing": "Uvoz",
+          "standby": "Standby",
+          "exporting": "Izvoz",
+          "unknown": "Nepoznato"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Snaga punjača"
+      },
+      "plant_charger_direction": {
+        "name": "Smer punjača",
+        "state": {
+          "charging": "Punjenje",
+          "idle": "Mirovanje",
+          "discharging": "Praznjenje",
+          "unknown": "Nepoznato"
+        }
       }
     }
   }

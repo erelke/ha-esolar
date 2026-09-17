@@ -21,6 +21,7 @@ from .const import (
     CONF_PV_GRID_DATA,
     DOMAIN,
     CONF_PLANT_UPDATE_INTERVAL,
+    CONF_UPDATE_INTERVAL,
     CONF_REGION,
     CONF_REGION_EU,
     CONF_REGION_IN,
@@ -372,8 +373,10 @@ class OptionsFlowHandler(config_entries.OptionsFlow):
                     ): bool,
                     vol.Required(
                         CONF_PLANT_UPDATE_INTERVAL,
-                        default=self.config_entry.options.get(CONF_PLANT_UPDATE_INTERVAL),
-                    ): int,
+                        default=self.config_entry.options.get(
+                            CONF_PLANT_UPDATE_INTERVAL, CONF_UPDATE_INTERVAL
+                        ),
+                    ): vol.All(vol.Coerce(int), vol.Range(min=1, max=1440)),
                 }
             ),
         )

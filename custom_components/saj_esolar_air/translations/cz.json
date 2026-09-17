@@ -162,6 +162,36 @@
           "offline": "Offline",
           "unknown": "Neznámý"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Ušetřené uhlí dnes"
+      },
+      "plant_backup_power": {
+        "name": "Záložní výkon"
+      },
+      "plant_generator_power": {
+        "name": "Výkon generátoru"
+      },
+      "plant_generator_direction": {
+        "name": "Směr generátoru",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Neznámý"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Výkon nabíječky"
+      },
+      "plant_charger_direction": {
+        "name": "Směr nabíječky",
+        "state": {
+          "charging": "Nabíjení",
+          "idle": "Nečinný",
+          "discharging": "Vybíjení",
+          "unknown": "Neznámý"
+        }
       }
     }
   }

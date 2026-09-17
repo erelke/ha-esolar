@@ -157,7 +157,16 @@ ICON_CURRENT_AC = "mdi:current-ac"
 ICON_WIFI = "mdi:wifi"
 ICON_STATUS = "mdi:check-circle-outline"
 
-from .sensor_helpers import offline_blocks_live_sensor
+from .sensor_helpers import (
+    as_number,
+    battery_properties,
+    find_inverter,
+    first_present,
+    has_value,
+    inverter_properties,
+    module_properties,
+    offline_blocks_live_sensor,
+)
 
 _LIVE_BATTERY_PROPS = frozenset({
     "batSoc", "batTemperature", "batPower", "batCurrent", "batVoltage",
@@ -228,6 +237,15 @@ async def async_setup_entry(
             plant_entities.append(
                 ESolarSensorPlantTodayEquivalentHours( coordinator, plant["plantName"], plant["plantUid"] )
             )
+            if has_value(plant.get("totalEquivalentHours")) or (
+                as_number(plant.get("systemPower") or plant.get("systempower"))
+                and as_number(plant.get("totalPvEnergy") or plant.get("totalElectricity")) is not None
+            ):
+                plant_entities.append(
+                    ESolarSensorPlantTotalEquivalentHours(
+                        coordinator, plant["plantName"], plant["plantUid"]
+                    )
+                )
 
 
             plant_entities.extend(
@@ -271,7 +289,7 @@ async def async_setup_entry(
 
 
             for source in sources:
-                if source in plant and plant[source] is not None and is_float_and_not_int(plant[source]):
+                if as_number(plant.get(source)) is not None:
                     _LOGGER.debug(
                         "Setting up ESolarSensorPlantEnergy-%s sensors for %s",
                         source,
@@ -332,6 +350,114 @@ async def async_setup_entry(
                             if kit.get("deviceTemp", 0) != 0 or kit.get("deviceType") == 1:
                                 device_entities.append(
                                     ESolarInverterTemperature(coordinator, plant["plantName"], plant["plantUid"], device)
+                                )
+                            if (
+                                has_value(kit.get("deviceStatus"))
+                                or has_value(kit.get("deviceStatusName"))
+                                or has_value(kit.get("onLine"))
+                            ):
+                                device_entities.append(
+                                    ESolarInverterStatus(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                    )
+                                )
+                            if (
+                                has_value(kit.get("dataUpdateTime"))
+                                or has_value(kit.get("lastUploadTime"))
+                                or has_value(kit.get("raw_datetime"))
+                                or has_value(kit.get("updateDate"))
+                                or has_value(kit.get("dataTime"))
+                            ):
+                                device_entities.append(
+                                    ESolarInverterLastUploadTime(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                    )
+                                )
+                            stats = _kit_stats(kit)
+                            pv_now = as_number(
+                                first_present(
+                                    stats.get("powerNow"),
+                                    kit.get("pvPower"),
+                                    kit.get("powerNow"),
+                                )
+                            )
+                            if as_number(kit.get("pac")) is not None and pv_now is not None:
+                                device_entities.append(
+                                    ESolarInverterAcPower(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                    )
+                                )
+                            charge = as_number(
+                                first_present(
+                                    kit.get("todayChargeEnergy"),
+                                    kit.get("todayBatChgEnergy"),
+                                    stats.get("todayBatChgEnergy"),
+                                )
+                            )
+                            discharge = as_number(
+                                first_present(
+                                    kit.get("todayDischargeEnergy"),
+                                    kit.get("todayDisChargeEnergy"),
+                                    kit.get("todayBatDisEnergy"),
+                                    stats.get("todayBatDisEnergy"),
+                                )
+                            )
+                            if charge is not None:
+                                device_entities.append(
+                                    ESolarInverterEnergyField(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                        "today_charge",
+                                        "Today Charge Energy",
+                                        (
+                                            "todayChargeEnergy",
+                                            "todayBatChgEnergy",
+                                        ),
+                                    )
+                                )
+                            if discharge is not None:
+                                device_entities.append(
+                                    ESolarInverterEnergyField(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                        "today_discharge",
+                                        "Today Discharge Energy",
+                                        (
+                                            "todayDischargeEnergy",
+                                            "todayDisChargeEnergy",
+                                            "todayBatDisEnergy",
+                                        ),
+                                    )
+                                )
+                            if as_number(
+                                first_present(
+                                    plant.get("backupTotalLoadPowerWatt"),
+                                    kit.get("backupTotalLoadPowerWatt"),
+                                    stats.get("backupTotalLoadPowerWatt"),
+                                )
+                            ) is not None and as_number(
+                                plant.get("backupTotalLoadPowerWatt")
+                            ) is None:
+                                device_entities.append(
+                                    ESolarInverterBackupPower(
+                                        coordinator,
+                                        plant["plantName"],
+                                        plant["plantUid"],
+                                        device,
+                                    )
                                 )
 
                     device_entities.append(
@@ -584,28 +710,35 @@ class ESolarDevice(CoordinatorEntity[ESolarCoordinator], SensorEntity):
                 if "devices" in plant and plant["devices"] is not None:
                     for device in plant["devices"]:
                         if device["deviceSn"] == self._inverter_sn:
-                            self._device_model = device.get("deviceModel") or device.get("inverterModel")
-                            self._hw_version = (
-                                device.get("masterMCUFw")
-                                or device.get("masterMcuFw")
-                                or device.get("masterControlFw")
+                            self._device_model = first_present(
+                                device.get("deviceModel"),
+                                device.get("inverterModel"),
                             )
-                            self._sw_version = device.get("displayFw") or device.get("softwareVersion")
+                            self._hw_version = device.get("hardwareVersion")
+                            self._sw_version = first_present(
+                                device.get("softwareVersion"),
+                                device.get("displayFw"),
+                                device.get("masterMCUFw"),
+                                device.get("masterMcuFw"),
+                                device.get("masterControlFw"),
+                            )
                             self._device_pc = device.get("devicePc")
 
-        device_info = DeviceInfo(
-            manufacturer=MANUFACTURER,
-            model=self._device_model,
-            name=self._device_name,
-            serial_number=self._inverter_sn,
-            hw_version=self._hw_version,
-            sw_version=self._sw_version,
-            via_device=(DOMAIN, self._plant_uid),
-            identifiers={
+        info = {
+            "manufacturer": MANUFACTURER,
+            "model": self._device_model,
+            "name": self._device_name,
+            "serial_number": self._inverter_sn,
+            "hw_version": self._hw_version,
+            "sw_version": self._sw_version,
+            "via_device": (DOMAIN, self._plant_uid),
+            "identifiers": {
                 (DOMAIN, f"{self._plant_uid}_{self._inverter_sn}"),
             },
-        )
-        return device_info
+        }
+        if has_value(self._device_pc):
+            info["model_id"] = str(self._device_pc)
+        return DeviceInfo(**info)
 
     async def async_update(self) -> None:
         """Get the latest data and update states."""
@@ -673,10 +806,18 @@ class ESolarMeter(CoordinatorEntity[ESolarCoordinator], SensorEntity):
                         same_sn = module.get("moduleSn") == self._module_sn
                         same_role = (module.get("moduleRole") or "meter") == self._module_role
                         if same_sn and same_role:
-                            self._device_model = module.get("moduleModel")
-                            self._sw_version = module.get("moduleFw")
+                            self._device_model = first_present(
+                                module.get("moduleModel"),
+                                module.get("deviceModel"),
+                            )
+                            self._sw_version = first_present(
+                                module.get("softwareVersion"),
+                                module.get("moduleFw"),
+                            )
                             self._hw_version = module.get("hardwareVersion")
-                            if module.get("moduleName"):
+                            if has_value(module.get("aliasName")):
+                                self._device_name = module["aliasName"]
+                            elif module.get("moduleName"):
                                 self._device_name = module["moduleName"]
                             break
 
@@ -745,16 +886,23 @@ class ESolarBattery(CoordinatorEntity[ESolarCoordinator], SensorEntity):
     def device_info(self) -> DeviceInfo:
         """Return the device_info of the device."""
 
-        bms_sn = None
         for plant in self._coordinator.data["plantList"]:
             if plant["plantName"] == self._plant_name:
                 if "batteries" in plant and plant["batteries"] is not None:
                     for battery in plant["batteries"]:
                         if battery.get("batSn") == self._bat_sn:
-                            self._device_model = battery.get("batModel")
-                            self._sw_version = battery.get("bmsSoftwareVersion")
-                            self._hw_version = battery.get("bmsHardwareVersion")
-                            bms_sn = battery.get("bmsSn")
+                            self._device_model = first_present(
+                                battery.get("batModel"),
+                                battery.get("deviceModel"),
+                            )
+                            self._sw_version = first_present(
+                                battery.get("bmsSoftwareVersion"),
+                                battery.get("softwareVersion"),
+                            )
+                            self._hw_version = first_present(
+                                battery.get("bmsHardwareVersion"),
+                                battery.get("hardwareVersion"),
+                            )
                             break
 
         device_info = DeviceInfo(
@@ -1203,18 +1351,20 @@ class ESolarSensorPlantLastUploadTime(ESolarPlant):
                 # Setup static attributes
                 self._attr_available = True
                 # Setup state
-                timezone = None
-                if "timeZone" in plant and plant["timeZone"] is not None:
-                    timezone = plant["timeZone"]
-
-                if "dataTime" in plant and plant["dataTime"] is not None:
-                    self._attr_native_value = extract_date(plant["dataTime"], timezone)
-                elif self._attr_native_value is None and "updateDate" in plant and plant["updateDate"] is not None:
-                    self._attr_native_value = extract_date(plant["updateDate"], timezone)
-                elif self._attr_native_value is None and "dataTime" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["dataTime"] is not None:
-                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["dataTime"], timezone)
-                elif self._attr_native_value is None and "updateDate" in plant["devices"][0] and plant["devices"][0]["deviceStatisticsData"]["updateDate"] is not None:
-                    self._attr_native_value = extract_date(plant["devices"][0]["deviceStatisticsData"]["updateDate"], timezone)
+                timezone = plant.get("timeZone")
+                raw = (
+                    plant.get("lastUploadTime")
+                    or plant.get("dataTime")
+                    or plant.get("dataTimeStr")
+                    or plant.get("updateDate")
+                )
+                parsed = extract_date(raw, timezone) if raw else None
+                if parsed is None:
+                    self._attr_available = False
+                    self._attr_native_value = None
+                else:
+                    self._attr_available = True
+                    self._attr_native_value = parsed
 
 
 class ESolarSensorPlantTodayEquivalentHours(ESolarPlant):
@@ -1259,6 +1409,269 @@ class ESolarSensorPlantTodayEquivalentHours(ESolarPlant):
                             self._attr_native_value = round(energy / capacity, 2)
                         else:
                             self._attr_native_value = 0.0
+
+
+class ESolarSensorPlantTotalEquivalentHours(ESolarPlant):
+    """Lifetime equivalent full-load hours for the plant."""
+
+    def __init__(self, coordinator: ESolarCoordinator, plant_name, plant_uid) -> None:
+        super().__init__(
+            coordinator=coordinator, plant_name=plant_name, plant_uid=plant_uid
+        )
+        self._attr_available = False
+        self._attr_unique_id = f"plantUid_totalEquivalentHours_{plant_uid}"
+        self._attr_icon = ICON_UPDATE
+        self._attr_name = f"Plant {self._plant_name} total Equivalent Hours"
+        self._attr_device_class = SensorDeviceClass.DURATION
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_unit_of_measurement = "h"
+        self._attr_native_value = None
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            hours = as_number(plant.get("totalEquivalentHours"))
+            if hours is None:
+                total = 0.0
+                counted = False
+                for device in plant.get("devices") or []:
+                    value = as_number(device.get("totalEquivalentHours"))
+                    if value is not None:
+                        total += value
+                        counted = True
+                hours = total if counted else None
+            if hours is None:
+                capacity = as_number(plant.get("systemPower") or plant.get("systempower"))
+                energy = as_number(plant.get("totalPvEnergy") or plant.get("totalElectricity"))
+                if capacity and capacity > 0 and energy is not None:
+                    hours = round(energy / capacity, 2)
+            if hours is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = hours
+            return
+
+
+_INVERTER_STATUS_MAP = {
+    1: "normal",
+    2: "alarm",
+    3: "offline",
+}
+
+
+class ESolarInverterStatus(ESolarDevice):
+    """Per-inverter online/alarm status."""
+
+    def __init__(self, coordinator, plant_name, plant_uid, inverter_sn) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, inverter_sn)
+        self._attr_available = False
+        self._attr_unique_id = f"inverter_{inverter_sn}_status"
+        self._attr_icon = ICON_STATUS
+        self._attr_name = f"Inverter {inverter_sn} Status"
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            kit = find_inverter(plant, self._inverter_sn)
+            if not kit:
+                self._attr_available = False
+                return
+            status = kit.get("deviceStatus")
+            try:
+                status_int = int(status) if status is not None else None
+            except (TypeError, ValueError):
+                status_int = None
+            mapped = _INVERTER_STATUS_MAP.get(status_int)
+            if mapped is None:
+                name = str(kit.get("deviceStatusName") or "").strip().lower()
+                mapped = {
+                    "normal": "normal",
+                    "alarm": "alarm",
+                    "offline": "offline",
+                    "fault": "alarm",
+                }.get(name)
+            if mapped is None:
+                try:
+                    online_int = int(kit.get("onLine")) if kit.get("onLine") is not None else None
+                except (TypeError, ValueError):
+                    online_int = None
+                if online_int == 0:
+                    mapped = "offline"
+                elif online_int == 1:
+                    mapped = "normal"
+            if mapped is None and has_value(status):
+                mapped = "unknown"
+            if mapped is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = mapped
+            extras = inverter_properties(kit)
+            if has_value(kit.get("warrantyEndTime")):
+                extras["warranty_end"] = kit.get("warrantyEndTime")
+            self._attr_extra_state_attributes = extras
+            return
+
+
+class ESolarInverterLastUploadTime(ESolarDevice):
+    """When this inverter last reported to the SAJ cloud."""
+
+    def __init__(self, coordinator, plant_name, plant_uid, inverter_sn) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, inverter_sn)
+        self._attr_available = False
+        self._attr_unique_id = f"inverter_{inverter_sn}_lastUploadTime"
+        self._attr_icon = ICON_UPDATE
+        self._attr_name = f"Inverter {inverter_sn} last Upload Time"
+        self._attr_device_class = SensorDeviceClass.TIMESTAMP
+        self._attr_entity_category = EntityCategory.DIAGNOSTIC
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            kit = find_inverter(plant, self._inverter_sn)
+            if not kit:
+                self._attr_available = False
+                return
+            timezone = plant.get("timeZone")
+            raw = first_present(
+                kit.get("dataUpdateTime"),
+                kit.get("lastUploadTime"),
+                kit.get("raw_datetime"),
+                kit.get("updateDate"),
+                kit.get("dataTime"),
+            )
+            parsed = extract_date(raw, timezone) if raw else None
+            if parsed is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = parsed
+            self._attr_extra_state_attributes = inverter_properties(kit)
+            return
+
+
+class ESolarInverterAcPower(ESolarDevice):
+    """Inverter AC output (PAC), distinct from PV input."""
+
+    def __init__(self, coordinator, plant_name, plant_uid, inverter_sn) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, inverter_sn)
+        self._attr_available = False
+        self._attr_unique_id = f"Inverter_{inverter_sn}_ac_power"
+        self._attr_icon = ICON_POWER
+        self._attr_name = f"Inverter {inverter_sn} AC Power"
+        self._attr_native_unit_of_measurement = UnitOfPower.WATT
+        self._attr_device_class = SensorDeviceClass.POWER
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_value = None
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            kit = find_inverter(plant, self._inverter_sn)
+            if self._offline_blocks_live_sensor(plant, kit or None):
+                return
+            pac = as_number(kit.get("pac"))
+            if pac is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = pac
+            return
+
+
+class ESolarInverterEnergyField(ESolarDevice):
+    """Inverter-level energy field such as today charge/discharge."""
+
+    def __init__(
+        self,
+        coordinator,
+        plant_name,
+        plant_uid,
+        inverter_sn,
+        key_suffix: str,
+        title: str,
+        source_keys: tuple[str, ...],
+    ) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, inverter_sn)
+        self._source_keys = source_keys
+        self._attr_available = False
+        self._attr_unique_id = f"inverter_{inverter_sn}_{key_suffix}"
+        self._attr_icon = ICON_METER
+        self._attr_name = f"Inverter {inverter_sn} {title}"
+        self._attr_native_unit_of_measurement = UnitOfEnergy.KILO_WATT_HOUR
+        self._attr_device_class = SensorDeviceClass.ENERGY
+        self._attr_state_class = SensorStateClass.TOTAL_INCREASING
+        self._attr_native_value = None
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            kit = find_inverter(plant, self._inverter_sn)
+            stats = _kit_stats(kit)
+            value = None
+            for key in self._source_keys:
+                value = as_number(first_present(kit.get(key), stats.get(key)))
+                if value is not None:
+                    break
+            if value is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = value
+            return
+
+
+class ESolarInverterBackupPower(ESolarDevice):
+    """Backup/EPS load power for a storage inverter."""
+
+    def __init__(self, coordinator, plant_name, plant_uid, inverter_sn) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, inverter_sn)
+        self._attr_available = False
+        self._attr_unique_id = f"Inverter_{inverter_sn}_backup_power"
+        self._attr_icon = ICON_SOCKET
+        self._attr_name = f"Inverter {inverter_sn} Backup Power"
+        self._attr_native_unit_of_measurement = UnitOfPower.WATT
+        self._attr_device_class = SensorDeviceClass.POWER
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_value = None
+
+    def process_data(self):
+        for plant in self._coordinator.data["plantList"]:
+            if plant["plantName"] != self._plant_name:
+                continue
+            kit = find_inverter(plant, self._inverter_sn)
+            if self._offline_blocks_live_sensor(plant, kit or None):
+                return
+            stats = _kit_stats(kit)
+            value = as_number(
+                first_present(
+                    kit.get("backupTotalLoadPowerWatt"),
+                    stats.get("backupTotalLoadPowerWatt"),
+                )
+            )
+            if value is None:
+                self._attr_available = False
+                self._attr_native_value = None
+            else:
+                self._attr_available = True
+                self._attr_native_value = value
+            return
 
 
 class ESolarSensorInverterPeakPower(ESolarDevice):
@@ -1552,8 +1965,9 @@ class ESolarInverterPower(ESolarDevice):
                         power_now = _first_number(
                             stats.get("powerNow"),
                             kit.get("pvPower"),
-                            kit.get("pac"),
                         )
+                        if power_now is None:
+                            power_now = _first_number(kit.get("pac"))
                         if power_now is None:
                             self._attr_available = False
                             self._attr_native_value = None
@@ -1577,6 +1991,9 @@ class ESolarInverterPower(ESolarDevice):
                         self._attr_extra_state_attributes[P_MODULE_SN] = (
                             kit.get("moduleSn") or child.get("deviceSn")
                         )
+                        props = inverter_properties(kit)
+                        if props:
+                            self._attr_extra_state_attributes.update(props)
 
 
 class ESolarInverterPV(ESolarDevice):
@@ -2599,14 +3016,9 @@ class ESolarSensorModuleEntity(ESolarMeter):
                     self._attr_available = True
                     self._attr_native_value = value
                 if self._property == "deviceStatusName":
-                    extras = {}
+                    extras = module_properties(plant_module)
                     for key in (
-                        "modulePc",
-                        "hardwareVersion",
-                        "moduleFw",
                         "boundDeviceSn",
-                        "aliasName",
-                        "ccid",
                     ):
                         if plant_module.get(key) not in (None, "", "--"):
                             extras[key] = plant_module[key]
@@ -2720,7 +3132,7 @@ class ESolarSensorBatteryEntity(ESolarBattery):
 
                         if self._add_attributes is not None:
                             copy = battery.copy()
-                            to_remove = ["deviceSn", "batSn", "bmsHardwareVersion", "bmsSoftwareVersion", "plantName", "plantUid", "batSoc", "batTemperature",
+                            to_remove = ["deviceSn", "batSn", "plantName", "plantUid", "batSoc", "batTemperature",
                                          "solutioUrl", "todayBatChgEnergy", "todayBatDisEnergy", "totalBatChgEnergy", "totalBatDisEnergy", "showBatSoc", "showBatteryNum",
                                          "showGroupNum", "showHeating", "showNewBatteryFlag", "enableBindPlant", "aiSavingSwitch", "EnableShowBatteryClusterRealDataBtn",
                                          "EnableShowBatteryRealDataBtn", "EnableShowSingleVoltageBtn", "EnableShowWarranty", "IsHistory", "IsContainCluster", "IsHighVolt"]
@@ -2729,6 +3141,13 @@ class ESolarSensorBatteryEntity(ESolarBattery):
                                     del copy[key]
 
                             self._attr_extra_state_attributes = copy
+                        if self._property == "batSoc":
+                            props = battery_properties(battery)
+                            if props:
+                                self._attr_extra_state_attributes = {
+                                    **self._attr_extra_state_attributes,
+                                    **props,
+                                }
 
 
 #unused yet

@@ -162,6 +162,36 @@
           "offline": "Offline",
           "unknown": "Nieznany"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Oszczędzony węgiel dziś"
+      },
+      "plant_backup_power": {
+        "name": "Moc zasilania awaryjnego"
+      },
+      "plant_generator_power": {
+        "name": "Moc generatora"
+      },
+      "plant_generator_direction": {
+        "name": "Kierunek generatora",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Eksport",
+          "unknown": "Nieznany"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Moc ładowarki"
+      },
+      "plant_charger_direction": {
+        "name": "Kierunek ładowarki",
+        "state": {
+          "charging": "Ładowanie",
+          "idle": "Bezczynny",
+          "discharging": "Rozładowanie",
+          "unknown": "Nieznany"
+        }
       }
     }
   }

@@ -162,6 +162,36 @@
           "offline": "Offline",
           "unknown": "Okänd"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Kol sparat idag"
+      },
+      "plant_backup_power": {
+        "name": "Backup-effekt"
+      },
+      "plant_generator_power": {
+        "name": "Generatoreffekt"
+      },
+      "plant_generator_direction": {
+        "name": "Generatorriktning",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Okänd"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Laddareffekt"
+      },
+      "plant_charger_direction": {
+        "name": "Laddarriktning",
+        "state": {
+          "charging": "Laddning",
+          "idle": "Vila",
+          "discharging": "Urladdning",
+          "unknown": "Okänd"
+        }
       }
     }
   }

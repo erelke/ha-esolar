@@ -219,6 +219,8 @@ def _fetch_esolar_data(
         web_get_device_battery_data(region, session, plant_info)
         _compat_equivalent_hours(plant_info)
         _compat_dashboard_fields(plant_info)
+        _compat_last_upload_time(plant_info)
+        _compat_sec_aux_fields(plant_info)
 
         plant_info["status"] = "success"
         plant_info["stamp"] = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -1395,6 +1397,94 @@ def _compat_dashboard_fields(plant_info):
             if plant.get("hasBattery") == 1:
                 preferred["hasBattery"] = 1
             preferred["deviceStatisticsData"] = stats
+
+
+def _parse_api_datetime(value):
+    """Parse Elekeeper date strings or epoch values into naive datetime."""
+    if value in (None, "", "--"):
+        return None
+    if isinstance(value, (int, float)):
+        epoch = float(value)
+        if epoch > 1e12:
+            epoch /= 1000.0
+        try:
+            return datetime.datetime.fromtimestamp(epoch)
+        except (OverflowError, OSError, ValueError):
+            return None
+    text = str(value).strip()
+    for fmt in ("%Y-%m-%d %H:%M:%S", "%d/%m/%Y %H:%M:%S"):
+        try:
+            return datetime.datetime.strptime(text, fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def _compat_last_upload_time(plant_info):
+    """Set lastUploadTime from the latest inverter/plant report timestamp."""
+    for plant in plant_info.get("plantList") or []:
+        candidates = []
+        for value in (
+            plant.get("lastUploadTime"),
+            plant.get("dataTime"),
+            plant.get("dataTimeStr"),
+        ):
+            parsed = _parse_api_datetime(value)
+            if parsed is not None:
+                candidates.append(parsed)
+        for device in plant.get("devices") or []:
+            stats = device.get("deviceStatisticsData") or {}
+            for value in (
+                device.get("dataUpdateTime"),
+                device.get("raw_datetime"),
+                device.get("dataTime"),
+                device.get("dataTimeStr"),
+                stats.get("dataTime"),
+                stats.get("dataTimeStr"),
+                stats.get("updateDate"),
+            ):
+                parsed = _parse_api_datetime(value)
+                if parsed is not None:
+                    candidates.append(parsed)
+        if not candidates:
+            parsed = _parse_api_datetime(plant.get("updateDate"))
+            if parsed is not None:
+                candidates.append(parsed)
+        if not candidates:
+            continue
+        stamp = max(candidates).strftime("%Y-%m-%d %H:%M:%S")
+        plant["lastUploadTime"] = stamp
+        plant["dataTime"] = stamp
+
+
+def _compat_sec_aux_fields(plant_info):
+    """Copy SEC generator/charger live fields onto the plant when missing."""
+    keys = (
+        "hasGen",
+        "genPowerwatt",
+        "genDirection",
+        "hasCharger",
+        "chargePower",
+        "chargerDirection",
+        "backupTotalLoadPowerWatt",
+    )
+    for plant in plant_info.get("plantList") or []:
+        for module in plant.get("modules") or []:
+            for key in keys:
+                if plant.get(key) in (None, "", "--") and module.get(key) not in (
+                    None,
+                    "",
+                    "--",
+                ):
+                    plant[key] = module[key]
+        for device in plant.get("devices") or []:
+            stats = device.get("deviceStatisticsData") or {}
+            if plant.get("backupTotalLoadPowerWatt") in (None, "", "--"):
+                backup = device.get("backupTotalLoadPowerWatt") or stats.get(
+                    "backupTotalLoadPowerWatt"
+                )
+                if backup not in (None, "", "--"):
+                    plant["backupTotalLoadPowerWatt"] = backup
 
 
 def _compat_raw_statistics(device, raw_data):

@@ -375,13 +375,220 @@ ENTITY_BY_LANG = {
 }
 
 
+EXTRA_ENTITY_BY_LANG = {
+    "en": {
+        "plant_daily_coal": {"name": "Coal saved today"},
+        "plant_backup_power": {"name": "Backup power"},
+        "plant_generator_power": {"name": "Generator power"},
+        "plant_generator_direction": {
+            "name": "Generator direction",
+            "state": {"importing": "Importing", "standby": "Standby", "exporting": "Exporting", "unknown": "Unknown"},
+        },
+        "plant_charger_power": {"name": "Charger power"},
+        "plant_charger_direction": {
+            "name": "Charger direction",
+            "state": {"charging": "Charging", "idle": "Idle", "discharging": "Discharging", "unknown": "Unknown"},
+        },
+    },
+    "hu": {
+        "plant_daily_coal": {"name": "Mai szénmegtakarítás"},
+        "plant_backup_power": {"name": "Backup teljesítmény"},
+        "plant_generator_power": {"name": "Generátor teljesítmény"},
+        "plant_generator_direction": {
+            "name": "Generátor irány",
+            "state": {"importing": "Import", "standby": "Készenlét", "exporting": "Export", "unknown": "Ismeretlen"},
+        },
+        "plant_charger_power": {"name": "Töltő teljesítmény"},
+        "plant_charger_direction": {
+            "name": "Töltő irány",
+            "state": {"charging": "Töltés", "idle": "Tétlen", "discharging": "Merítés", "unknown": "Ismeretlen"},
+        },
+    },
+    "de": {
+        "plant_daily_coal": {"name": "Heute eingesparte Kohle"},
+        "plant_backup_power": {"name": "Backup-Leistung"},
+        "plant_generator_power": {"name": "Generatorleistung"},
+        "plant_generator_direction": {
+            "name": "Generatorrichtung",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Export", "unknown": "Unbekannt"},
+        },
+        "plant_charger_power": {"name": "Ladegerät-Leistung"},
+        "plant_charger_direction": {
+            "name": "Ladegerätrichtung",
+            "state": {"charging": "Laden", "idle": "Leerlauf", "discharging": "Entladen", "unknown": "Unbekannt"},
+        },
+    },
+    "es": {
+        "plant_daily_coal": {"name": "Carbón ahorrado hoy"},
+        "plant_backup_power": {"name": "Potencia de respaldo"},
+        "plant_generator_power": {"name": "Potencia del generador"},
+        "plant_generator_direction": {
+            "name": "Dirección del generador",
+            "state": {"importing": "Importación", "standby": "En espera", "exporting": "Exportación", "unknown": "Desconocido"},
+        },
+        "plant_charger_power": {"name": "Potencia del cargador"},
+        "plant_charger_direction": {
+            "name": "Dirección del cargador",
+            "state": {"charging": "Cargando", "idle": "Inactivo", "discharging": "Descargando", "unknown": "Desconocido"},
+        },
+    },
+    "fr": {
+        "plant_daily_coal": {"name": "Charbon économisé aujourd'hui"},
+        "plant_backup_power": {"name": "Puissance de secours"},
+        "plant_generator_power": {"name": "Puissance générateur"},
+        "plant_generator_direction": {
+            "name": "Direction générateur",
+            "state": {"importing": "Import", "standby": "Veille", "exporting": "Export", "unknown": "Inconnu"},
+        },
+        "plant_charger_power": {"name": "Puissance chargeur"},
+        "plant_charger_direction": {
+            "name": "Direction chargeur",
+            "state": {"charging": "Charge", "idle": "Inactif", "discharging": "Décharge", "unknown": "Inconnu"},
+        },
+    },
+    "it": {
+        "plant_daily_coal": {"name": "Carbone risparmiato oggi"},
+        "plant_backup_power": {"name": "Potenza di backup"},
+        "plant_generator_power": {"name": "Potenza generatore"},
+        "plant_generator_direction": {
+            "name": "Direzione generatore",
+            "state": {"importing": "Importazione", "standby": "Standby", "exporting": "Esportazione", "unknown": "Sconosciuto"},
+        },
+        "plant_charger_power": {"name": "Potenza caricatore"},
+        "plant_charger_direction": {
+            "name": "Direzione caricatore",
+            "state": {"charging": "Carica", "idle": "Inattivo", "discharging": "Scarica", "unknown": "Sconosciuto"},
+        },
+    },
+    "pl": {
+        "plant_daily_coal": {"name": "Oszczędzony węgiel dziś"},
+        "plant_backup_power": {"name": "Moc zasilania awaryjnego"},
+        "plant_generator_power": {"name": "Moc generatora"},
+        "plant_generator_direction": {
+            "name": "Kierunek generatora",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Eksport", "unknown": "Nieznany"},
+        },
+        "plant_charger_power": {"name": "Moc ładowarki"},
+        "plant_charger_direction": {
+            "name": "Kierunek ładowarki",
+            "state": {"charging": "Ładowanie", "idle": "Bezczynny", "discharging": "Rozładowanie", "unknown": "Nieznany"},
+        },
+    },
+    "ro": {
+        "plant_daily_coal": {"name": "Cărbune economisit azi"},
+        "plant_backup_power": {"name": "Putere backup"},
+        "plant_generator_power": {"name": "Putere generator"},
+        "plant_generator_direction": {
+            "name": "Direcție generator",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Export", "unknown": "Necunoscut"},
+        },
+        "plant_charger_power": {"name": "Putere încărcător"},
+        "plant_charger_direction": {
+            "name": "Direcție încărcător",
+            "state": {"charging": "Încărcare", "idle": "Inactiv", "discharging": "Descărcare", "unknown": "Necunoscut"},
+        },
+    },
+    "sk": {
+        "plant_daily_coal": {"name": "Ušetrené uhlie dnes"},
+        "plant_backup_power": {"name": "Záložný výkon"},
+        "plant_generator_power": {"name": "Výkon generátora"},
+        "plant_generator_direction": {
+            "name": "Smer generátora",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Export", "unknown": "Neznámy"},
+        },
+        "plant_charger_power": {"name": "Výkon nabíjačky"},
+        "plant_charger_direction": {
+            "name": "Smer nabíjačky",
+            "state": {"charging": "Nabíjanie", "idle": "Nečinný", "discharging": "Vybíjanie", "unknown": "Neznámy"},
+        },
+    },
+    "cz": {
+        "plant_daily_coal": {"name": "Ušetřené uhlí dnes"},
+        "plant_backup_power": {"name": "Záložní výkon"},
+        "plant_generator_power": {"name": "Výkon generátoru"},
+        "plant_generator_direction": {
+            "name": "Směr generátoru",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Export", "unknown": "Neznámý"},
+        },
+        "plant_charger_power": {"name": "Výkon nabíječky"},
+        "plant_charger_direction": {
+            "name": "Směr nabíječky",
+            "state": {"charging": "Nabíjení", "idle": "Nečinný", "discharging": "Vybíjení", "unknown": "Neznámý"},
+        },
+    },
+    "sv": {
+        "plant_daily_coal": {"name": "Kol sparat idag"},
+        "plant_backup_power": {"name": "Backup-effekt"},
+        "plant_generator_power": {"name": "Generatoreffekt"},
+        "plant_generator_direction": {
+            "name": "Generatorriktning",
+            "state": {"importing": "Import", "standby": "Standby", "exporting": "Export", "unknown": "Okänd"},
+        },
+        "plant_charger_power": {"name": "Laddareffekt"},
+        "plant_charger_direction": {
+            "name": "Laddarriktning",
+            "state": {"charging": "Laddning", "idle": "Vila", "discharging": "Urladdning", "unknown": "Okänd"},
+        },
+    },
+    "sr": {
+        "plant_daily_coal": {"name": "Ušteđeni ugalj danas"},
+        "plant_backup_power": {"name": "Rezervna snaga"},
+        "plant_generator_power": {"name": "Snaga generatora"},
+        "plant_generator_direction": {
+            "name": "Smer generatora",
+            "state": {"importing": "Uvoz", "standby": "Standby", "exporting": "Izvoz", "unknown": "Nepoznato"},
+        },
+        "plant_charger_power": {"name": "Snaga punjača"},
+        "plant_charger_direction": {
+            "name": "Smer punjača",
+            "state": {"charging": "Punjenje", "idle": "Mirovanje", "discharging": "Praznjenje", "unknown": "Nepoznato"},
+        },
+    },
+    "ua": {
+        "plant_daily_coal": {"name": "Заощаджене вугілля сьогодні"},
+        "plant_backup_power": {"name": "Резервна потужність"},
+        "plant_generator_power": {"name": "Потужність генератора"},
+        "plant_generator_direction": {
+            "name": "Напрямок генератора",
+            "state": {"importing": "Імпорт", "standby": "Очікування", "exporting": "Експорт", "unknown": "Невідомо"},
+        },
+        "plant_charger_power": {"name": "Потужність зарядного"},
+        "plant_charger_direction": {
+            "name": "Напрямок зарядного",
+            "state": {"charging": "Зарядка", "idle": "Простій", "discharging": "Розряд", "unknown": "Невідомо"},
+        },
+    },
+    "cn": {
+        "plant_daily_coal": {"name": "今日节约煤炭"},
+        "plant_backup_power": {"name": "备用功率"},
+        "plant_generator_power": {"name": "发电机功率"},
+        "plant_generator_direction": {
+            "name": "发电机方向",
+            "state": {"importing": "输入", "standby": "待机", "exporting": "输出", "unknown": "未知"},
+        },
+        "plant_charger_power": {"name": "充电桩功率"},
+        "plant_charger_direction": {
+            "name": "充电桩方向",
+            "state": {"charging": "充电", "idle": "空闲", "discharging": "放电", "unknown": "未知"},
+        },
+    },
+}
+
+
 def merge_entity_translations() -> None:
     for lang, sensors in ENTITY_BY_LANG.items():
+        sensors = {**sensors, **EXTRA_ENTITY_BY_LANG.get(lang, EXTRA_ENTITY_BY_LANG["en"])}
         path = STRINGS_FILE if lang == "en" else TRANSLATIONS_DIR / f"{lang}.json"
         data = json.loads(path.read_text(encoding="utf-8"))
         data.setdefault("entity", {}).setdefault("sensor", {}).update(sensors)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"Updated {path.name}")
+        if lang == "en":
+            en_path = TRANSLATIONS_DIR / "en.json"
+            en_data = json.loads(en_path.read_text(encoding="utf-8"))
+            en_data.setdefault("entity", {}).setdefault("sensor", {}).update(sensors)
+            en_path.write_text(json.dumps(en_data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            print(f"Updated {en_path.name}")
 
 
 if __name__ == "__main__":

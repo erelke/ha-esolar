@@ -162,6 +162,36 @@
           "offline": "离线",
           "unknown": "未知"
         }
+      },
+      "plant_daily_coal": {
+        "name": "今日节约煤炭"
+      },
+      "plant_backup_power": {
+        "name": "备用功率"
+      },
+      "plant_generator_power": {
+        "name": "发电机功率"
+      },
+      "plant_generator_direction": {
+        "name": "发电机方向",
+        "state": {
+          "importing": "输入",
+          "standby": "待机",
+          "exporting": "输出",
+          "unknown": "未知"
+        }
+      },
+      "plant_charger_power": {
+        "name": "充电桩功率"
+      },
+      "plant_charger_direction": {
+        "name": "充电桩方向",
+        "state": {
+          "charging": "充电",
+          "idle": "空闲",
+          "discharging": "放电",
+          "unknown": "未知"
+        }
       }
     }
   }

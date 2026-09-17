@@ -162,6 +162,36 @@
           "offline": "As líne",
           "unknown": "Anaithnid"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Coal saved today"
+      },
+      "plant_backup_power": {
+        "name": "Backup power"
+      },
+      "plant_generator_power": {
+        "name": "Generator power"
+      },
+      "plant_generator_direction": {
+        "name": "Generator direction",
+        "state": {
+          "importing": "Importing",
+          "standby": "Standby",
+          "exporting": "Exporting",
+          "unknown": "Unknown"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Charger power"
+      },
+      "plant_charger_direction": {
+        "name": "Charger direction",
+        "state": {
+          "charging": "Charging",
+          "idle": "Idle",
+          "discharging": "Discharging",
+          "unknown": "Unknown"
+        }
       }
     }
   }

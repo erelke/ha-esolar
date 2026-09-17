@@ -31,7 +31,10 @@ ICON_TREE = "mdi:tree"
 ICON_CO2 = "mdi:molecule-co2"
 ICON_MODE = "mdi:cog"
 ICON_ONLINE = "mdi:lan-connect"
-ICON_STATUS = "mdi:check-circle"
+ICON_STATUS = "mdi:check-circle-outline"
+ICON_COAL = "mdi:barrel"
+ICON_GENERATOR = "mdi:engine"
+ICON_CHARGER = "mdi:ev-station"
 
 GRID_DIRECTION_KEYS = {
     -1: "importing",
@@ -567,6 +570,41 @@ class ESolarPlantDirectionSensor(ESolarPlantDashboardSensor):
             return
 
 
+class ESolarPlantPowerFieldSensor(ESolarPlantDashboardSensor):
+    """Plant-level power field that is only created when the API has data."""
+
+    def __init__(
+        self,
+        coordinator,
+        plant_name,
+        plant_uid,
+        translation_key: str,
+        plant_field: str,
+        icon: str,
+    ) -> None:
+        super().__init__(coordinator, plant_name, plant_uid, translation_key)
+        self._plant_field = plant_field
+        self._attr_device_class = SensorDeviceClass.POWER
+        self._attr_state_class = SensorStateClass.MEASUREMENT
+        self._attr_native_unit_of_measurement = UnitOfPower.WATT
+        self._attr_icon = icon
+        self._attr_native_value = None
+
+    def process_data(self) -> None:
+        for plant in self._plant_list():
+            if plant["plantName"] != self._plant_name:
+                continue
+            if self._offline_blocks_live_sensor(plant):
+                return
+            power = _float_value(plant.get(self._plant_field))
+            if power is None:
+                self._attr_available = False
+                return
+            self._attr_available = True
+            self._attr_native_value = power
+            return
+
+
 class ESolarPlantDailyEnvironmentalSensor(ESolarPlantDashboardSensor):
     """Daily environmental impact sensor."""
 
@@ -584,7 +622,7 @@ class ESolarPlantDailyEnvironmentalSensor(ESolarPlantDashboardSensor):
         self._plant_field = plant_field
         self._attr_icon = icon
         self._attr_native_unit_of_measurement = unit
-        if translation_key.endswith("co2"):
+        if translation_key.endswith("co2") or translation_key.endswith("coal"):
             self._attr_state_class = SensorStateClass.MEASUREMENT
         else:
             self._attr_state_class = SensorStateClass.TOTAL
@@ -727,6 +765,82 @@ def create_plant_dashboard_sensors(
             ICON_CO2,
         ),
     ]
+    coal = _float_value(plant.get("todayCoal"))
+    if coal is not None and coal != 0:
+        sensors.append(
+            ESolarPlantDailyEnvironmentalSensor(
+                coordinator,
+                plant_name,
+                plant_uid,
+                "plant_daily_coal",
+                "todayCoal",
+                "t",
+                ICON_COAL,
+            )
+        )
+    if _float_value(plant.get("backupTotalLoadPowerWatt")) is not None:
+        sensors.append(
+            ESolarPlantPowerFieldSensor(
+                coordinator,
+                plant_name,
+                plant_uid,
+                "plant_backup_power",
+                "backupTotalLoadPowerWatt",
+                ICON_HOME,
+            )
+        )
+    gen_power = _float_value(plant.get("genPowerwatt"))
+    has_gen = plant.get("hasGen") == 1 or (gen_power is not None and gen_power != 0)
+    if has_gen:
+        sensors.append(
+            ESolarPlantPowerFieldSensor(
+                coordinator,
+                plant_name,
+                plant_uid,
+                "plant_generator_power",
+                "genPowerwatt",
+                ICON_GENERATOR,
+            )
+        )
+        if plant.get("genDirection") is not None:
+            sensors.append(
+                ESolarPlantDirectionSensor(
+                    coordinator,
+                    plant_name,
+                    plant_uid,
+                    "plant_generator_direction",
+                    "genDirection",
+                    GRID_DIRECTION_KEYS,
+                    ICON_GENERATOR,
+                )
+            )
+    charger_power = _float_value(plant.get("chargePower"))
+    has_charger = plant.get("hasCharger") == 1 or (
+        charger_power is not None and charger_power != 0
+    )
+    if has_charger:
+        sensors.append(
+            ESolarPlantPowerFieldSensor(
+                coordinator,
+                plant_name,
+                plant_uid,
+                "plant_charger_power",
+                "chargePower",
+                ICON_CHARGER,
+            )
+        )
+        if plant.get("chargerDirection") is not None:
+            sensors.append(
+                ESolarPlantDirectionSensor(
+                    coordinator,
+                    plant_name,
+                    plant_uid,
+                    "plant_charger_direction",
+                    "chargerDirection",
+                    BATTERY_DIRECTION_KEYS,
+                    ICON_CHARGER,
+                )
+            )
 
     if plant_has_battery(plant):
         sensors.extend(

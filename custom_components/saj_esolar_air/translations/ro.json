@@ -162,6 +162,36 @@
           "offline": "Offline",
           "unknown": "Necunoscut"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Cărbune economisit azi"
+      },
+      "plant_backup_power": {
+        "name": "Putere backup"
+      },
+      "plant_generator_power": {
+        "name": "Putere generator"
+      },
+      "plant_generator_direction": {
+        "name": "Direcție generator",
+        "state": {
+          "importing": "Import",
+          "standby": "Standby",
+          "exporting": "Export",
+          "unknown": "Necunoscut"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Putere încărcător"
+      },
+      "plant_charger_direction": {
+        "name": "Direcție încărcător",
+        "state": {
+          "charging": "Încărcare",
+          "idle": "Inactiv",
+          "discharging": "Descărcare",
+          "unknown": "Necunoscut"
+        }
       }
     }
   }

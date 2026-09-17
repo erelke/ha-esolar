@@ -162,6 +162,36 @@
           "offline": "Офлайн",
           "unknown": "Невідомо"
         }
+      },
+      "plant_daily_coal": {
+        "name": "Заощаджене вугілля сьогодні"
+      },
+      "plant_backup_power": {
+        "name": "Резервна потужність"
+      },
+      "plant_generator_power": {
+        "name": "Потужність генератора"
+      },
+      "plant_generator_direction": {
+        "name": "Напрямок генератора",
+        "state": {
+          "importing": "Імпорт",
+          "standby": "Очікування",
+          "exporting": "Експорт",
+          "unknown": "Невідомо"
+        }
+      },
+      "plant_charger_power": {
+        "name": "Потужність зарядного"
+      },
+      "plant_charger_direction": {
+        "name": "Напрямок зарядного",
+        "state": {
+          "charging": "Зарядка",
+          "idle": "Простій",
+          "discharging": "Розряд",
+          "unknown": "Невідомо"
+        }
       }
     }
   }
