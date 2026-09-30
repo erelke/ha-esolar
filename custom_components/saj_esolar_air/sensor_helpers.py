@@ -116,14 +116,23 @@ def _as_int(value: Any) -> int | None:
 
 
 def plant_is_offline(plant: dict) -> bool:
-    """Return True when the plant is offline."""
+    """Return True when the plant is offline.
+
+    ``runningState`` is the plant online flag when the API sends it (1 normal,
+    2 alarm, 3 offline; v2 energy-flow uses 6 for normal). A contradictory
+    plant ``deviceStatus`` of 3 must not hide fresh telemetry in that case.
+
+    ``deviceStatus`` remains the fallback for older payloads that omit
+    ``runningState``. ``isOnline`` stays an independent offline signal.
+    """
     state = _as_int(plant.get("runningState"))
     if state == PLANT_RUNNING_STATE_OFFLINE:
         return True
 
-    status = _as_int(plant.get("deviceStatus"))
-    if status == PLANT_RUNNING_STATE_OFFLINE:
-        return True
+    if state is None:
+        status = _as_int(plant.get("deviceStatus"))
+        if status == PLANT_RUNNING_STATE_OFFLINE:
+            return True
 
     online = plant.get("isOnline")
     if online is not None and str(online).upper() in _OFFLINE_ONLINE_VALUES:
