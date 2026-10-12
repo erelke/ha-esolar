@@ -9,7 +9,7 @@ import random
 import re
 import time
 from datetime import timedelta, datetime
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 ### 1. Signing query params
 
@@ -109,13 +109,25 @@ def split_camel_case(s):
     words = re.findall(r'[A-Z][a-z]*|[a-z]+', s)  # Felbontás kis- és nagybetűkre
     return ' '.join(word.capitalize() for word in words)
 
+def _zoneinfo(timezone):
+    """Accept 'Europe/Amsterdam' and 'Europe/Amsterdam (UTC+01:00)'."""
+    if not isinstance(timezone, str):
+        return timezone
+    name = timezone.split(" (", 1)[0].strip()
+    if not name:
+        return None
+    try:
+        return ZoneInfo(name)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+
+
 def extract_date(date_str, timezone = None):
+    tz = _zoneinfo(timezone) if timezone else None
     try:
         date_obj = datetime.strptime(date_str, "%Y-%m-%d %H:%M:%S")
-        if timezone:
-            if isinstance(timezone, str):  # Ha stringként adod meg az időzónát
-                timezone = ZoneInfo(timezone)
-            date_obj = date_obj.replace(tzinfo=timezone)
+        if tz is not None:
+            date_obj = date_obj.replace(tzinfo=tz)
         else:
             date_obj = datetime.strptime(date_str + " " + time.strftime('%z'), "%Y-%m-%d %H:%M:%S %z")
     except ValueError:

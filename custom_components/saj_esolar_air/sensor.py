@@ -2,8 +2,9 @@
 from __future__ import annotations
 import datetime
 from datetime import timedelta, datetime
-import pytz
 import logging
+import pytz
+import re
 from .elekeeper import extract_number, split_camel_case, extract_date
 
 _LOGGER = logging.getLogger(__name__)
@@ -49,12 +50,29 @@ def _grid_phase_defs(device: dict) -> list[dict]:
     return [{"gridNo": index} for index in range(1, count + 1)]
 
 
+def _inverter_product_type(device: dict) -> int | None:
+    """SAJ product type: 0 on-grid, 1 storage, 2 AC-coupled storage."""
+    try:
+        return int(device.get("type"))
+    except (TypeError, ValueError):
+        return None
+
+
 def _pv_string_defs(device: dict) -> list[dict]:
-    """Return PV strings from live data, or two MPPT inputs."""
+    """Return PV strings from live data, or two MPPT inputs.
+
+    AC-coupled storage (type 2, for example AS1) has no string or MPPT
+    inputs. Create those sensors only when the API sends a pvList.
+    """
     pv_list = _kit_stats(device).get("pvList") or []
     if isinstance(pv_list, list) and pv_list:
         return pv_list
+    if _inverter_product_type(device) == 2:
+        return []
     return [{"pvNo": 1}, {"pvNo": 2}]
+
+
+_UNUSED_STRING_UID = re.compile(r"^(?:PV|PC|PW)\d+_(.+)$")
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -75,6 +93,7 @@ from homeassistant.const import (
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import DeviceInfo
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from . import ESolarCoordinator
@@ -175,6 +194,34 @@ _LIVE_BATTERY_PROPS = frozenset({
 
 def is_float_and_not_int(num):
     return isinstance(num, float) and not isinstance(num, int)
+
+
+def _remove_unused_ac_string_entities(hass: HomeAssistant, entry_id: str, plant_list: list) -> None:
+    """Drop PV string entities previously created for AC-coupled storage."""
+    drop_sns = set()
+    for plant in plant_list or []:
+        for device in plant.get("devices") or []:
+            if not isinstance(device, dict) or _inverter_product_type(device) != 2:
+                continue
+            sn = device.get("deviceSn")
+            if sn and not _pv_string_defs(device):
+                drop_sns.add(sn)
+    if not drop_sns:
+        return
+
+    registry = er.async_get(hass)
+    removed = 0
+    for entity in er.async_entries_for_config_entry(registry, entry_id):
+        match = _UNUSED_STRING_UID.match(entity.unique_id or "")
+        if match and match.group(1) in drop_sns:
+            registry.async_remove(entity.entity_id)
+            removed += 1
+    if removed:
+        _LOGGER.info(
+            "Removed %s PV string entities from AC-coupled storage without pvList",
+            removed,
+        )
+
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
@@ -601,6 +648,8 @@ async def async_setup_entry(
                                     battery_index=bat_label,
                                 )
                             )
+
+    _remove_unused_ac_string_entities(hass, entry.entry_id, esolar_data.get("plantList"))
 
     async_add_entities(plant_entities, True)
     async_add_entities(device_entities, True)
