@@ -1224,9 +1224,35 @@ def _float_or_none(value):
         return None
 
 
+_DERIVED_KEY = "_compat_derived"
+
+
+def _drop_derived(obj):
+    """Remove values derived on a previous poll so they are recomputed.
+
+    plant_info is cached in WEB_PLANT_DATA and reused between polls, so values
+    filled in only "when missing" would otherwise stick forever.
+    """
+    if isinstance(obj, dict):
+        for key in obj.pop(_DERIVED_KEY, []):
+            obj.pop(key, None)
+
+
+def _set_derived(obj, key, value):
+    """Set a derived value and remember it so the next poll recomputes it."""
+    obj[key] = value
+    derived = obj.setdefault(_DERIVED_KEY, [])
+    if key not in derived:
+        derived.append(key)
+
+
 def _compat_equivalent_hours(plant_info):
     """Derive v1 today/total equivalent hours (kWh / kWp) when v2 omits them."""
     for plant in plant_info.get("plantList") or []:
+        _drop_derived(plant)
+        for device in plant.get("devices") or []:
+            _drop_derived(device)
+            _drop_derived(device.get("deviceStatisticsData"))
         capacity = _float_or_none(
             _raw_value(
                 plant.get("systemPower"),
@@ -1243,9 +1269,9 @@ def _compat_equivalent_hours(plant_info):
         if not capacity or capacity <= 0:
             continue
         if _float_or_none(plant.get("todayEquivalentHours")) is None and today_energy is not None:
-            plant["todayEquivalentHours"] = round(today_energy / capacity, 2)
+            _set_derived(plant, "todayEquivalentHours", round(today_energy / capacity, 2))
         if _float_or_none(plant.get("totalEquivalentHours")) is None and total_energy is not None:
-            plant["totalEquivalentHours"] = round(total_energy / capacity, 2)
+            _set_derived(plant, "totalEquivalentHours", round(total_energy / capacity, 2))
         for device in plant.get("devices") or []:
             if not _is_inverter_device(device):
                 continue
@@ -1260,9 +1286,9 @@ def _compat_equivalent_hours(plant_info):
                     )
                 )
                 if device_today is not None:
-                    device["todayEquivalentHours"] = round(device_today / capacity, 2)
+                    _set_derived(device, "todayEquivalentHours", round(device_today / capacity, 2))
                 elif plant.get("todayEquivalentHours") is not None:
-                    device["todayEquivalentHours"] = plant["todayEquivalentHours"]
+                    _set_derived(device, "todayEquivalentHours", plant["todayEquivalentHours"])
             if _float_or_none(device.get("totalEquivalentHours")) is None:
                 device_total = _float_or_none(
                     _raw_value(
@@ -1271,13 +1297,13 @@ def _compat_equivalent_hours(plant_info):
                     )
                 )
                 if device_total is not None:
-                    device["totalEquivalentHours"] = round(device_total / capacity, 2)
+                    _set_derived(device, "totalEquivalentHours", round(device_total / capacity, 2))
                 elif plant.get("totalEquivalentHours") is not None:
-                    device["totalEquivalentHours"] = plant["totalEquivalentHours"]
+                    _set_derived(device, "totalEquivalentHours", plant["totalEquivalentHours"])
             if device.get("todayEquivalentHours") is not None:
-                stats["todayEquivalentHours"] = device["todayEquivalentHours"]
+                _set_derived(stats, "todayEquivalentHours", device["todayEquivalentHours"])
             if device.get("totalEquivalentHours") is not None:
-                stats["totalEquivalentHours"] = device["totalEquivalentHours"]
+                _set_derived(stats, "totalEquivalentHours", device["totalEquivalentHours"])
             device["deviceStatisticsData"] = stats
 
 
@@ -1343,15 +1369,15 @@ def _compat_dashboard_fields(plant_info):
 
         if plant.get("usableBatCapacity") in (None, "", 0, 0.0):
             if pack_energy > 0:
-                plant["usableBatCapacity"] = round(pack_energy, 2)
+                _set_derived(plant, "usableBatCapacity", round(pack_energy, 2))
             elif pack_kwh_total > 0 and percent is not None:
-                plant["usableBatCapacity"] = round(pack_kwh_total * percent / 100.0, 2)
+                _set_derived(plant, "usableBatCapacity", round(pack_kwh_total * percent / 100.0, 2))
 
         if plant.get("selfUseRate") in (None, ""):
-            plant["selfUseRate"] = _raw_value(
+            _set_derived(plant, "selfUseRate", _raw_value(
                 plant.get("selfUsePercent"),
                 plant.get("selfUsePercentage"),
-            )
+            ))
 
         if plant.get("batteryWorkTime") in (None, "", 0, 0.0):
             bat_power = abs(_float_or_none(plant.get("batPower")) or 0.0)
@@ -1359,11 +1385,11 @@ def _compat_dashboard_fields(plant_info):
             direction = _float_or_none(plant.get("batteryDirection"))
             if bat_power > 0 and usable is not None:
                 if direction == 1:
-                    plant["batteryWorkTime"] = round(usable / (bat_power / 1000.0) * 60.0, 0)
+                    _set_derived(plant, "batteryWorkTime", round(usable / (bat_power / 1000.0) * 60.0, 0))
                 elif direction == -1 and pack_kwh_total > usable:
-                    plant["batteryWorkTime"] = round(
+                    _set_derived(plant, "batteryWorkTime", round(
                         (pack_kwh_total - usable) / (bat_power / 1000.0) * 60.0, 0
-                    )
+                    ))
 
         if plant.get("batteries"):
             plant["hasBattery"] = 1
@@ -1389,8 +1415,8 @@ def _compat_dashboard_fields(plant_info):
                     continue
                 existing = stats.get(key)
                 if existing in (None, "", 0, 0.0):
-                    stats[key] = value
-                    preferred[key] = value
+                    _set_derived(stats, key, value)
+                    _set_derived(preferred, key, value)
                 else:
                     stats.setdefault(key, value)
                     preferred.setdefault(key, value)
